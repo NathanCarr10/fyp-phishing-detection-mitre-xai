@@ -1,0 +1,3 @@
+# Ignore data files and large CSVs
+data/
+*.csv
