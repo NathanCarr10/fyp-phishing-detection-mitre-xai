@@ -1,19 +1,19 @@
-"""A minimal viable product (MVP) for phishing email detection using TF-IDF and Logistic Regression."""
-
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
+from lime.lime_text import LimeTextExplainer
 
-# Path to CSV file
+# Path to your CSV file
 DATA_PATH = "data/phishing_email.csv"
 
+# Column names in the CSV
 TEXT_COLUMN = "text_combined"
-LABEL_COLUMN = "label"
+LABEL_COLUMN = "label"  # 1 for phishing, 0 for legitimate
 
 
-def load_data(path: str, text_col: str, label_col: str):
+def load_data(path, text_col, label_col):
     """Load the CSV file and return texts and labels."""
     print("Loading dataset from:", path)
     df = pd.read_csv(path)
@@ -50,7 +50,7 @@ def split_data(texts, labels, test_size=0.2, seed=42):
         labels,
         test_size=test_size,
         random_state=seed,
-        stratify=labels
+        stratify=labels,
     )
 
     print("\nTraining samples:", len(X_train))
@@ -63,7 +63,7 @@ def vectorize_text(X_train, X_test):
     vectorizer = TfidfVectorizer(
         lowercase=True,
         stop_words="english",
-        max_features=5000
+        max_features=5000,
     )
 
     print("\nFitting TF-IDF vectorizer on training data...")
@@ -79,6 +79,7 @@ def vectorize_text(X_train, X_test):
 def train_model(X_train_tfidf, y_train):
     """Train Logistic Regression classifier."""
     clf = LogisticRegression(max_iter=1000)
+
     print("\nTraining Logistic Regression classifier...")
     clf.fit(X_train_tfidf, y_train)
     return clf
@@ -109,7 +110,7 @@ def show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred, num_exam
         print("True label:   ", y_test[i])
         print("Predicted:    ", y_pred[i])
 
-        # Show prediction probabilities (if available)
+        # Show prediction probabilities
         if hasattr(clf, "predict_proba"):
             proba = clf.predict_proba(X_test_tfidf[i])[0]
             print("Class probabilities:")
@@ -117,6 +118,38 @@ def show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred, num_exam
                 print(f"  {label}: {p:.3f}")
 
         print("-" * 60)
+
+
+def explain_with_lime(clf, vectorizer, text_sample):
+    """Use LIME to explain one email."""
+    # Function that LIME will call:
+    # input: list of texts
+    # output: list of probability vectors
+    def predict_proba(text_list):
+        X = vectorizer.transform(text_list)
+        return clf.predict_proba(X)
+    
+    class_names = [str(c) for c in clf.classes_]
+
+    explainer = LimeTextExplainer(class_names=class_names)
+
+    # Explain this one email
+    exp = explainer.explain_instance(
+        text_sample,
+        predict_proba,
+        num_features=10  # show top 10 important words
+    )
+
+    print("\nLIME explanation (word, weight):")
+    for word, weight in exp.as_list():
+        print(f"  {word}: {weight:.4f}")
+    try:
+        html = exp.as_html()
+        with open("lime_explanation.html", "w", encoding="utf-8") as f:
+            f.write(html)
+        print("\nSaved detailed HTML explanation to lime_explanation.html")
+    except Exception as e:
+        print("\nCould not save HTML explanation:", e)
 
 
 def main():
@@ -137,6 +170,14 @@ def main():
 
     # 6. Show example predictions
     show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred)
+
+    # 7. Explain one email with LIME
+    sample_index = 0 # Change this index to explain a different email
+    sample_text = X_test[sample_index]
+    print("\nExplaining this email with LIME:")
+    print(sample_text[:300].replace("\n", " "))
+
+    explain_with_lime(clf, vectorizer, sample_text)
 
 
 if __name__ == "__main__":
