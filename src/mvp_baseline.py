@@ -32,7 +32,6 @@ def load_data(path, text_col, label_col):
     print("\nColumns in the dataset:")
     print(df.columns)
 
-    # Check that the expected columns exist
     if text_col not in df.columns or label_col not in df.columns:
         raise ValueError(
             f"\nColumn names not found.\n"
@@ -41,7 +40,6 @@ def load_data(path, text_col, label_col):
             f"Edit TEXT_COLUMN and LABEL_COLUMN at the top of the file."
         )
 
-    # Drop rows where text or label is missing
     df = df.dropna(subset=[text_col, label_col])
 
     texts = df[text_col].values
@@ -114,7 +112,7 @@ def show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred, num_exam
     n = min(num_examples, len(X_test))
     for i in range(n):
         print("Email text:")
-        print(X_test[i][:200].replace("\n", " "))  # first 200 characters
+        print(X_test[i][:200].replace("\n", " "))
 
         true_label = y_test[i]
         pred_label = y_pred[i]
@@ -124,7 +122,6 @@ def show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred, num_exam
         print("True label:   ", true_name, f"({true_label})")
         print("Predicted:    ", pred_name, f"({pred_label})")
 
-        # Show prediction probabilities
         if hasattr(clf, "predict_proba"):
             proba = clf.predict_proba(X_test_tfidf[i])[0]
             print("Class probabilities:")
@@ -141,18 +138,13 @@ def explain_with_lime(clf, vectorizer, text_sample):
         X = vectorizer.transform(text_list)
         return clf.predict_proba(X)
 
-    class_names = [
-        LABEL_MAP.get(c, str(c))
-        for c in clf.classes_
-    ]
-
+    class_names = [LABEL_MAP.get(c, str(c)) for c in clf.classes_]
     explainer = LimeTextExplainer(class_names=class_names)
 
-    # Explain one email
     exp = explainer.explain_instance(
         text_sample,
         predict_proba,
-        num_features=10,  # show top 10 important words
+        num_features=10,
     )
 
     print("\nLIME explanation (word, weight):")
@@ -168,20 +160,26 @@ def explain_with_lime(clf, vectorizer, text_sample):
         print("\nCould not save HTML explanation:", e)
 
 
-# SHAP
+# SHAP-related functions
 
-def build_shap_explainer(clf, X_train_tfidf):
-    """Create a SHAP explainer for the trained model."""
-    explainer = shap.LinearExplainer(clf, X_train_tfidf)
+def sample_rows(X, n=2000, seed=42):
+    """Return a random sample of rows from a sparse matrix."""
+    n = min(n, X.shape[0])
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(X.shape[0], size=n, replace=False)
+    return X[idx], idx
+
+
+def build_shap_explainer(clf, X_train_tfidf, background_size=2000):
+    """Create a SHAP explainer using a small background sample."""
+    print("\nBuilding SHAP explainer (using a small background sample)...")
+    X_bg, _ = sample_rows(X_train_tfidf, n=background_size, seed=42)
+    explainer = shap.LinearExplainer(clf, X_bg)
     return explainer
 
 
 def _select_shap_array(shap_values, clf, target_label=None):
-    """
-    Handle SHAP output for binary / multiclass.
-    Returns a 2D array: (n_samples, n_features) or (1, n_features).
-    """
-    # shap_values
+    """Handle SHAP output for binary/multiclass."""
     if isinstance(shap_values, list):
         if target_label is not None and target_label in clf.classes_:
             idx = list(clf.classes_).index(target_label)
@@ -194,22 +192,21 @@ def _select_shap_array(shap_values, clf, target_label=None):
     return np.array(shap_array)
 
 
-def explain_with_shap_global(explainer, clf, X_train_tfidf, feature_names, top_n=20):
-    """Print top features globally using SHAP."""
+def explain_with_shap_global(explainer, clf, X_train_tfidf, feature_names, top_n=20, sample_size=2000):
+    """Print top features globally using SHAP (sample-based to save memory)."""
     print("\nComputing SHAP global feature importance...")
 
-    shap_values = explainer.shap_values(X_train_tfidf)
-    # Focus on the phishing class if it exists, else default
+    X_sample, _ = sample_rows(X_train_tfidf, n=sample_size, seed=42)
+    print(f"Using a sample of {X_sample.shape[0]} emails for global SHAP.")
+
+    shap_values = explainer.shap_values(X_sample)
     target_label = 1 if 1 in clf.classes_ else None
     shap_array = _select_shap_array(shap_values, clf, target_label=target_label)
 
-    # Mean absolute SHAP value per feature
     mean_abs_shap = np.mean(np.abs(shap_array), axis=0)
-
-    # Get indices of top N features
     top_indices = np.argsort(mean_abs_shap)[-top_n:][::-1]
 
-    print(f"\nTop {top_n} global features by SHAP (most important overall):")
+    print(f"\nTop {top_n} global features by SHAP (sample-based):")
     for idx in top_indices:
         print(f"  {feature_names[idx]}: {mean_abs_shap[idx]:.6f}")
 
@@ -219,14 +216,10 @@ def explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index, 
     print(f"\nComputing SHAP local explanation for test index {index}...")
 
     shap_values = explainer.shap_values(X_test_tfidf[index])
-    # Use predicted class or phishing class
     target_label = 1 if 1 in clf.classes_ else None
     shap_array = _select_shap_array(shap_values, clf, target_label=target_label)
 
-    # shap_array may be shape (n_features,) or (1, n_features)
     shap_flat = np.ravel(shap_array)
-
-    # Get top features by absolute SHAP value
     top_indices = np.argsort(np.abs(shap_flat))[-top_n:][::-1]
 
     if y_test is not None:
@@ -239,44 +232,27 @@ def explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index, 
 
 
 def main():
-    # 1. Load data
     texts, labels = load_data(DATA_PATH, TEXT_COLUMN, LABEL_COLUMN)
-
-    # 2. Split into train and test
     X_train, X_test, y_train, y_test = split_data(texts, labels)
-
-    # 3. Vectorize text with TF-IDF
     vectorizer, X_train_tfidf, X_test_tfidf = vectorize_text(X_train, X_test)
-
-    # 4. Train classifier
     clf = train_model(X_train_tfidf, y_train)
 
-    # 5. Evaluate model
     y_pred = evaluate_model(clf, X_test_tfidf, y_test)
-
-    # 6. Show example predictions
     show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred)
 
-    # Pick one test email to explain
     sample_index = 0
     sample_text = X_test[sample_index]
     print("\nExplaining this email (index 0) with LIME:")
     print(sample_text[:300].replace("\n", " "))
 
-    # 7. Explain with LIME
     explain_with_lime(clf, vectorizer, sample_text)
 
-    # 8. SHAP explanations
-    # Get feature names from the TF-IDF vectorizer
     feature_names = vectorizer.get_feature_names_out()
 
-    # Build SHAP explainer
-    explainer = build_shap_explainer(clf, X_train_tfidf)
+    explainer = build_shap_explainer(clf, X_train_tfidf, background_size=2000)
 
-    # 8a. Global SHAP explanation
-    explain_with_shap_global(explainer, clf, X_train_tfidf, feature_names, top_n=20)
+    explain_with_shap_global(explainer, clf, X_train_tfidf, feature_names, top_n=20, sample_size=2000)
 
-    # 8b. Local SHAP explanation for the same email
     explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index=sample_index, y_test=y_test, top_n=10)
 
 
