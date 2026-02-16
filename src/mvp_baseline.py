@@ -7,12 +7,11 @@ from sklearn.metrics import accuracy_score, classification_report
 from lime.lime_text import LimeTextExplainer
 import shap
 
-# Path to your CSV file
-DATA_PATH = "data/phishing_email.csv"
+# Paths and column names
+DATA_PATH = "data/processed/english_dataset.csv"
+TEXT_COLUMN = "text"
+LABEL_COLUMN = "label"
 
-# Column names in the CSV
-TEXT_COLUMN = "text_combined"  # email text
-LABEL_COLUMN = "label"         # 0/1 label
 
 # label names for printing and explanations
 LABEL_MAP = {
