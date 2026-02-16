@@ -83,7 +83,7 @@ def vectorize_text(X_train, X_test):
 
 def train_model(X_train_tfidf, y_train):
     """Train Logistic Regression classifier."""
-    clf = LogisticRegression(max_iter=1000)
+    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
 
     print("\nTraining Logistic Regression classifier...")
     clf.fit(X_train_tfidf, y_train)
