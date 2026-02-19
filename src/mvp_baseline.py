@@ -1,19 +1,25 @@
+import os
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import roc_curve, roc_auc_score
 from lime.lime_text import LimeTextExplainer
 import matplotlib.pyplot as plt
 import shap
+import joblib
 
 # Paths and column names
 DATA_PATH = "data/processed/english_dataset.csv"
 TEXT_COLUMN = "text"
 LABEL_COLUMN = "label"
 
+# Paths for saving model and vectorizer
+MODEL_DIR = "models"
+VECTORIZER_PATH = os.path.join(MODEL_DIR, "tfidf_vectorizer.joblib")
+MODEL_PATH = os.path.join(MODEL_DIR, "logreg_model.joblib")
 
 # label names for printing and explanations
 LABEL_MAP = {
@@ -231,30 +237,6 @@ def explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index, 
     for idx in top_indices:
         print(f"  {feature_names[idx]}: {shap_flat[idx]:.6f}")
 
-# Confusion matrix function
-
-def print_confusion_matrix(y_test, y_pred):
-    """Print confusion matrix and simple rates."""
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
-    tn, fp, fn, tp = cm.ravel()
-
-    print("\nConfusion Matrix (rows=true, cols=pred):")
-    print("             Pred Legit   Pred Phish")
-    print(f"True Legit      {tn:6d}      {fp:6d}")
-    print(f"True Phish      {fn:6d}      {tp:6d}")
-
-    # Useful rates
-    phishing_recall = tp / (tp + fn) if (tp + fn) else 0
-    phishing_precision = tp / (tp + fp) if (tp + fp) else 0
-    false_positive_rate = fp / (fp + tn) if (fp + tn) else 0
-    false_negative_rate = fn / (fn + tp) if (fn + tp) else 0
-
-    print("\nKey rates:")
-    print(f"Phishing recall (TPR):       {phishing_recall:.3f}")
-    print(f"Phishing precision (PPV):    {phishing_precision:.3f}")
-    print(f"False positive rate (FPR):   {false_positive_rate:.3f}")
-    print(f"False negative rate (FNR):   {false_negative_rate:.3f}")
-
 
 # ROC/AUC function
 
@@ -296,23 +278,71 @@ def plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png"):
     return auc
 
 
+# Model save/load + single email prediction
+
+def save_model(vectorizer, clf):
+    """Save the trained vectorizer and model to disk."""
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    joblib.dump(vectorizer, VECTORIZER_PATH)
+    joblib.dump(clf, MODEL_PATH)
+    print(f"\nSaved vectorizer to: {VECTORIZER_PATH}")
+    print(f"Saved model to:      {MODEL_PATH}")
+
+
+def load_model():
+    """Load the vectorizer and model from disk."""
+    if not (os.path.exists(VECTORIZER_PATH) and os.path.exists(MODEL_PATH)):
+        raise FileNotFoundError(
+            "Model files not found. Train the model and run save_model() first."
+        )
+    vectorizer = joblib.load(VECTORIZER_PATH)
+    clf = joblib.load(MODEL_PATH)
+    return vectorizer, clf
+
+
+def predict_single_email(text: str):
+    """
+    Load the saved model and vectorizer, and predict for a single email text.
+    Returns: (predicted_label, predicted_label_name, probabilities_dict)
+    """
+    vectorizer, clf = load_model()
+    X = vectorizer.transform([text])
+    proba = clf.predict_proba(X)[0]
+    pred = clf.predict(X)[0]
+
+    # Map probabilities to label names
+    prob_dict = {}
+    for label, p in zip(clf.classes_, proba):
+        name = LABEL_MAP.get(label, str(label))
+        prob_dict[name] = float(p)
+
+    pred_name = LABEL_MAP.get(pred, str(pred))
+
+    return int(pred), pred_name, prob_dict
+
 
 def main():
+    # 1. Load and split data
     texts, labels = load_data(DATA_PATH, TEXT_COLUMN, LABEL_COLUMN)
     X_train, X_test, y_train, y_test = split_data(texts, labels)
     vectorizer, X_train_tfidf, X_test_tfidf = vectorize_text(X_train, X_test)
+
+    # 2. Train model
     clf = train_model(X_train_tfidf, y_train)
 
+    # 3. Evaluate
     y_pred = evaluate_model(clf, X_test_tfidf, y_test)
 
-    # Confusion matrix
-    print_confusion_matrix(y_test, y_pred)
-
-    # ROC + AUC
+    # 4. ROC + AUC
     plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png")
 
+    # 5. Show some predictions
     show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred)
 
+    # 6. Save model + vectorizer for reuse (web app, simulations, etc.)
+    save_model(vectorizer, clf)
+
+    # 7. LIME explanation for one test email
     sample_index = 0
     sample_text = X_test[sample_index]
     print("\nExplaining this email (index 0) with LIME:")
@@ -320,13 +350,36 @@ def main():
 
     explain_with_lime(clf, vectorizer, sample_text)
 
+    # 8. SHAP explanations
     feature_names = vectorizer.get_feature_names_out()
-
     explainer = build_shap_explainer(clf, X_train_tfidf, background_size=2000)
 
-    explain_with_shap_global(explainer, clf, X_train_tfidf, feature_names, top_n=20, sample_size=2000)
+    explain_with_shap_global(
+        explainer,
+        clf,
+        X_train_tfidf,
+        feature_names,
+        top_n=20,
+        sample_size=2000,
+    )
 
-    explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index=sample_index, y_test=y_test, top_n=10)
+    explain_with_shap_local(
+        explainer,
+        clf,
+        X_test_tfidf,
+        feature_names,
+        index=sample_index,
+        y_test=y_test,
+        top_n=10,
+    )
+
+    # Optional: quick demo of predict_single_email using the saved model
+    demo_text = "Your account has been locked. Please click this link to verify your details."
+    pred, pred_name, probs = predict_single_email(demo_text)
+    print("\nSingle email prediction demo (using saved model):")
+    print("Text:", demo_text)
+    print("Predicted:", pred_name, f"({pred})")
+    print("Probabilities:", probs)
 
 
 if __name__ == "__main__":
