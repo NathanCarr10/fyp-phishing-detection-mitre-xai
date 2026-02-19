@@ -3,8 +3,10 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import roc_curve, roc_auc_score
 from lime.lime_text import LimeTextExplainer
+import matplotlib.pyplot as plt
 import shap
 
 # Paths and column names
@@ -229,6 +231,71 @@ def explain_with_shap_local(explainer, clf, X_test_tfidf, feature_names, index, 
     for idx in top_indices:
         print(f"  {feature_names[idx]}: {shap_flat[idx]:.6f}")
 
+# Confusion matrix function
+
+def print_confusion_matrix(y_test, y_pred):
+    """Print confusion matrix and simple rates."""
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel()
+
+    print("\nConfusion Matrix (rows=true, cols=pred):")
+    print("             Pred Legit   Pred Phish")
+    print(f"True Legit      {tn:6d}      {fp:6d}")
+    print(f"True Phish      {fn:6d}      {tp:6d}")
+
+    # Useful rates
+    phishing_recall = tp / (tp + fn) if (tp + fn) else 0
+    phishing_precision = tp / (tp + fp) if (tp + fp) else 0
+    false_positive_rate = fp / (fp + tn) if (fp + tn) else 0
+    false_negative_rate = fn / (fn + tp) if (fn + tp) else 0
+
+    print("\nKey rates:")
+    print(f"Phishing recall (TPR):       {phishing_recall:.3f}")
+    print(f"Phishing precision (PPV):    {phishing_precision:.3f}")
+    print(f"False positive rate (FPR):   {false_positive_rate:.3f}")
+    print(f"False negative rate (FNR):   {false_negative_rate:.3f}")
+
+
+# ROC/AUC function
+
+def plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png"):
+    """Compute AUC and save ROC curve to a PNG file."""
+    # We need probabilities for the phishing class (label 1)
+    if not hasattr(clf, "predict_proba"):
+        print("\nModel does not support predict_proba, cannot compute ROC/AUC.")
+        return None
+
+    proba = clf.predict_proba(X_test_tfidf)
+
+    # Find which column is class "1"
+    if 1 in clf.classes_:
+        phishing_index = list(clf.classes_).index(1)
+    else:
+        # fallback: assume second column is "positive"
+        phishing_index = 1
+
+    y_score = proba[:, phishing_index]
+
+    auc = roc_auc_score(y_test, y_score)
+    fpr, tpr, thresholds = roc_curve(y_test, y_score)
+
+    print(f"\nROC AUC score (phishing=1): {auc:.4f}")
+
+    # Plot ROC curve
+    plt.figure()
+    plt.plot(fpr, tpr)
+    plt.plot([0, 1], [0, 1], linestyle="--")  # baseline
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
+
+    print(f"Saved ROC curve plot to: {out_path}")
+    return auc
+
+
 
 def main():
     texts, labels = load_data(DATA_PATH, TEXT_COLUMN, LABEL_COLUMN)
@@ -237,6 +304,13 @@ def main():
     clf = train_model(X_train_tfidf, y_train)
 
     y_pred = evaluate_model(clf, X_test_tfidf, y_test)
+
+    # Confusion matrix
+    print_confusion_matrix(y_test, y_pred)
+
+    # ROC + AUC
+    plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png")
+
     show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred)
 
     sample_index = 0
