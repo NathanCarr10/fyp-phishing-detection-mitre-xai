@@ -9,6 +9,7 @@
 # - Supports different probability thresholds for classifying phishing
 # - Logs all results to a single CSV file with threshold and round info
 # - Prints a summary detection/bypass rate per threshold
+# - Now also reports recall and miss_rate for each threshold
 
 import csv
 import os
@@ -22,7 +23,7 @@ SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = os.path.join(SIM_OUTPUT_DIR, "attacker_simulation_log.csv")
 
 
-# Simple MITRE mapping helper 
+# Simple MITRE mapping helper
 
 def mitre_mapping(email_text: str) -> str:
     """
@@ -33,11 +34,9 @@ def mitre_mapping(email_text: str) -> str:
     """
     text_lower = email_text.lower()
 
-    # Very naive link detection
     if "http://" in text_lower or "https://" in text_lower or "www." in text_lower or "click here" in text_lower:
         return "T1566.002 - Phishing: Link"
     else:
-        # You could refine this later based on keywords like "attachment", "invoice.pdf", etc.
         return "T1566.001 - Phishing: Attachment/Generic"
 
 
@@ -185,6 +184,15 @@ def run_simulation_for_threshold(
                     writer.writerow(row)
 
     # Build summary for this threshold
+    # In this simulation, all samples are phishing, so:
+    # - defender_wins ≈ true positives
+    # - attacker_wins ≈ false negatives
+    tp = defender_wins
+    fn = attacker_wins
+
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    miss_rate = fn / (tp + fn) if (tp + fn) > 0 else 0.0
+
     summary = {
         "threshold": threshold,
         "total_attacks": total_attacks,
@@ -192,6 +200,8 @@ def run_simulation_for_threshold(
         "defender_wins": defender_wins,
         "detection_rate": defender_wins / total_attacks if total_attacks else 0.0,
         "bypass_rate": attacker_wins / total_attacks if total_attacks else 0.0,
+        "recall": recall,
+        "miss_rate": miss_rate,
     }
     return summary
 
@@ -257,7 +267,10 @@ def run_experiments(
 
     # Print summary table
     print("\n=== Simulation Summary by Threshold ===")
-    print("Threshold | Total Attacks | Defender Wins | Attacker Wins | Detection Rate | Bypass Rate")
+    print(
+        "Threshold | Total Attacks | Defender Wins | Attacker Wins | "
+        "Detection Rate | Bypass Rate | Recall | Miss Rate"
+    )
     for s in summaries:
         print(
             f"{s['threshold']:8.2f} | "
@@ -265,7 +278,9 @@ def run_experiments(
             f"{s['defender_wins']:13d} | "
             f"{s['attacker_wins']:13d} | "
             f"{s['detection_rate']:14.3f} | "
-            f"{s['bypass_rate']:11.3f}"
+            f"{s['bypass_rate']:11.3f} | "
+            f"{s['recall']:6.3f} | "
+            f"{s['miss_rate']:9.3f}"
         )
 
     print(f"\nDetailed log saved to: {SIM_OUTPUT_PATH}")
