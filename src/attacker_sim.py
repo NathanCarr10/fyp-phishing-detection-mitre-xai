@@ -1,51 +1,36 @@
 # src/attacker_sim.py
 #
-# Upgraded attacker vs defender simulation.
-#
-# - Loads the saved model and vectorizer from mvp_baseline.py
-# - Starts from simple phishing-style base messages
-# - Applies simple "attack rules" (urgency, spoof bank, spoof Revenue, fake link)
-# - Runs multiple rounds of simulations
-# - Supports different probability thresholds for classifying phishing
-# - Logs all results to a single CSV file with threshold and round info
-# - Prints a summary per threshold:
-#     * Attacker vs defender wins (for phishing emails)
-#     * Detection / bypass rate (for phishing emails)
-#     * Full confusion matrix (TP, FP, TN, FN)
-#     * Precision, recall, F1, accuracy (on phishing + legit)
+# Attacker vs Defender simulation with:
+# - Legit + phishing emails
+# - Full confusion matrix metrics
+# - Threshold testing
+# - MITRE mapping
+# - XAI explanations logged for attacker wins (false negatives)
 
 import csv
 import os
 from datetime import datetime, timezone
 
-from mvp_baseline import load_model  # uses your saved model
+from mvp_baseline import load_model
+from xai_explainer import explain_email  # NEW
 
 
-# Output CSV for logging results
 SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = os.path.join(SIM_OUTPUT_DIR, "attacker_simulation_log.csv")
 
 
-# Simple MITRE mapping helper
+# ---------------- MITRE Mapping ---------------- #
 
 def mitre_mapping(email_text: str) -> str:
-    """
-    Very simple mapping of phishing emails to MITRE ATT&CK T1566 sub-techniques.
-    This is just a placeholder for now.
-    - If it contains a link-like string → T1566.002 (Link)
-    - Else → T1566.001 (Attachment/Generic)
-    """
     text_lower = email_text.lower()
 
-    # Very naive link detection
     if "http://" in text_lower or "https://" in text_lower or "www." in text_lower or "click here" in text_lower:
         return "T1566.002 - Phishing: Link"
     else:
-        # You could refine this later based on keywords like "attachment", "invoice.pdf", etc.
         return "T1566.001 - Phishing: Attachment/Generic"
 
 
-# Attacker rules (used only for phishing emails)
+# ---------------- Attacker Rules ---------------- #
 
 def add_urgency(text: str) -> str:
     return (
@@ -54,14 +39,12 @@ def add_urgency(text: str) -> str:
         " Please respond within 24 hours to avoid losing access."
     )
 
-
 def spoof_bank(text: str) -> str:
     return (
         "AIB Security Notice: We detected unusual activity on your account. " +
         text +
         " Log in now to confirm your identity."
     )
-
 
 def spoof_revenue(text: str) -> str:
     return (
@@ -70,13 +53,11 @@ def spoof_revenue(text: str) -> str:
         " Please follow the link below to claim your refund."
     )
 
-
 def add_fake_link(text: str) -> str:
     return (
         text +
         " Click here to resolve this issue: http://secure-verification-example.com/login"
     )
-
 
 ATTACK_RULES = {
     "urgency": add_urgency,
@@ -86,7 +67,7 @@ ATTACK_RULES = {
 }
 
 
-# Base phishing messages
+# ---------------- Base Emails ---------------- #
 
 BASE_PHISHING_EMAILS = [
     "We have detected suspicious activity on your account.",
@@ -94,9 +75,6 @@ BASE_PHISHING_EMAILS = [
     "There is a problem with your billing information.",
     "We were unable to deliver your package due to an address issue.",
 ]
-
-
-# Base legitimate (non-phishing) emails
 
 BASE_LEGIT_EMAILS = [
     "Hi, just a reminder that our team meeting is at 10am tomorrow.",
@@ -106,36 +84,24 @@ BASE_LEGIT_EMAILS = [
 ]
 
 
-# Helper: classify with a custom threshold
+# ---------------- Classification Helper ---------------- #
 
 def classify_email(vectorizer, clf, text: str, threshold: float = 0.5):
-    """
-    Classify a single email using a custom probability threshold.
-
-    - Transforms text with the TF-IDF vectorizer
-    - Uses clf.predict_proba to get phishing probability
-    - If P(phishing) >= threshold → classify as phishing (1)
-    - Else → classify as legit (0)
-    """
     X = vectorizer.transform([text])
     proba = clf.predict_proba(X)[0]
 
-    # Find index of the "phishing" class (label 1)
     if 1 in clf.classes_:
         phishing_index = list(clf.classes_).index(1)
     else:
-        # fallback: assume second column is "positive"
         phishing_index = 1
 
     phishing_prob = float(proba[phishing_index])
-
-    # Apply decision threshold
     pred_label = 1 if phishing_prob >= threshold else 0
 
     return pred_label, phishing_prob
 
 
-# Core simulation for a single threshold
+# ---------------- Simulation Core ---------------- #
 
 def run_simulation_for_threshold(
     vectorizer,
@@ -145,31 +111,15 @@ def run_simulation_for_threshold(
     num_rounds: int = 5,
     num_variants_per_base: int = 2,
 ):
-    """
-    Run the attacker vs defender simulation for one specific threshold.
 
-    For each threshold:
-      - Repeat num_rounds times
-      - For each base phishing email and each rule, create num_variants_per_base variants
-      - Classify each phishing variant (attacker vs defender)
-      - Also classify a set of legitimate emails (no attacker)
-      - Log each attempt to CSV
-      - Track full confusion matrix and attacker/defender wins
-
-    Returns a dict with summary stats for this threshold.
-    """
-
-    # Confusion matrix counters
     tp = fp = tn = fn = 0
-
-    # Attacker vs defender counts (phishing only)
     total_phishing_attacks = 0
-    attacker_wins = 0  # phishing slips through (false negative)
-    defender_wins = 0  # phishing blocked (true positive)
+    attacker_wins = 0
+    defender_wins = 0
 
     for round_idx in range(num_rounds):
 
-        # 1) Phishing emails with attack rules
+        # ---- PHISHING EMAILS ---- #
         for base_index, base_text in enumerate(BASE_PHISHING_EMAILS):
             for rule_name, rule_fn in ATTACK_RULES.items():
                 for variant_idx in range(num_variants_per_base):
@@ -178,24 +128,33 @@ def run_simulation_for_threshold(
                     modified_text = rule_fn(base_text)
                     mitre_label = mitre_mapping(modified_text)
 
-                    # Classify with the given threshold
                     pred, phishing_prob = classify_email(
-                        vectorizer, clf, modified_text, threshold=threshold
+                        vectorizer, clf, modified_text, threshold
                     )
 
-                    true_label = 1  # phishing
+                    true_label = 1
                     attacker_success = 0
+                    xai_method = ""
+                    xai_top_features = ""
 
                     if pred == 1:
-                        # Correctly caught phishing
                         tp += 1
                         defender_wins += 1
-                        attacker_success = 0
                     else:
-                        # Missed phishing (attacker wins)
                         fn += 1
                         attacker_wins += 1
                         attacker_success = 1
+
+                        # ---- CALL XAI FOR ATTACKER WIN ---- #
+                        explanation = explain_email(
+                            modified_text,
+                            num_features=10,
+                            threshold=threshold,
+                            use_lime=True,
+                        )
+
+                        xai_method = explanation["method"]
+                        xai_top_features = str(explanation["top_features"])
 
                     row = {
                         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -211,23 +170,23 @@ def run_simulation_for_threshold(
                         "attacker_success": attacker_success,
                         "true_label": true_label,
                         "mitre_technique": mitre_label,
+                        "xai_method": xai_method,
+                        "xai_top_features": xai_top_features,
                     }
                     writer.writerow(row)
 
-        # 2) Legitimate emails (no attacker)
+        # ---- LEGIT EMAILS ---- #
         for legit_index, legit_text in enumerate(BASE_LEGIT_EMAILS):
+
             pred, phishing_prob = classify_email(
-                vectorizer, clf, legit_text, threshold=threshold
+                vectorizer, clf, legit_text, threshold
             )
 
-            true_label = 0  # legitimate
-            attacker_success = 0  # no attacker in this part
+            true_label = 0
 
             if pred == 1:
-                # Legit email incorrectly flagged as phishing
                 fp += 1
             else:
-                # Legit email correctly allowed
                 tn += 1
 
             row = {
@@ -241,30 +200,27 @@ def run_simulation_for_threshold(
                 "modified_text": legit_text,
                 "predicted_label": pred,
                 "phishing_probability": phishing_prob,
-                "attacker_success": attacker_success,
+                "attacker_success": 0,
                 "true_label": true_label,
                 "mitre_technique": "N/A - Legit",
+                "xai_method": "",
+                "xai_top_features": "",
             }
             writer.writerow(row)
 
-    # Metrics
-
     total_samples = tp + fp + tn + fn
 
-    # Detection/bypass rates (phishing only, for attacker vs defender view)
-    detection_rate = defender_wins / total_phishing_attacks if total_phishing_attacks > 0 else 0.0
-    bypass_rate = attacker_wins / total_phishing_attacks if total_phishing_attacks > 0 else 0.0
+    detection_rate = defender_wins / total_phishing_attacks if total_phishing_attacks else 0
+    bypass_rate = attacker_wins / total_phishing_attacks if total_phishing_attacks else 0
 
-    # Standard classification metrics
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-    accuracy = (tp + tn) / total_samples if total_samples > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
+    accuracy = (tp + tn) / total_samples if total_samples > 0 else 0
 
-    summary = {
+    return {
         "threshold": threshold,
         "total_phishing_attacks": total_phishing_attacks,
-        "total_samples": total_samples,
         "attacker_wins": attacker_wins,
         "defender_wins": defender_wins,
         "detection_rate": detection_rate,
@@ -278,31 +234,16 @@ def run_simulation_for_threshold(
         "f1": f1,
         "accuracy": accuracy,
     }
-    return summary
 
 
-# Top-level experiment runner
+# ---------------- Experiment Runner ---------------- #
 
-def run_experiments(
-    thresholds=None,
-    num_rounds: int = 5,
-    num_variants_per_base: int = 2,
-):
-    """
-    Run simulations for multiple thresholds and print a summary.
+def run_experiments(thresholds=None, num_rounds=5, num_variants_per_base=2):
 
-    thresholds: list of probability thresholds to test, e.g. [0.5, 0.6, 0.7]
-    """
     if thresholds is None:
         thresholds = [0.5, 0.6, 0.7]
 
-    # Load the saved model and vectorizer
-    try:
-        vectorizer, clf = load_model()
-    except FileNotFoundError as e:
-        print("\nModel files not found. Please run mvp_baseline.py once to train and save the model.")
-        print("Error:", e)
-        return
+    vectorizer, clf = load_model()
 
     os.makedirs(SIM_OUTPUT_DIR, exist_ok=True)
 
@@ -320,11 +261,12 @@ def run_experiments(
         "attacker_success",
         "true_label",
         "mitre_technique",
+        "xai_method",
+        "xai_top_features",
     ]
 
     summaries = []
 
-    # Open the CSV once, log all thresholds and rounds
     with open(SIM_OUTPUT_PATH, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -334,44 +276,16 @@ def run_experiments(
             summary = run_simulation_for_threshold(
                 vectorizer,
                 clf,
-                threshold=thr,
-                writer=writer,
-                num_rounds=num_rounds,
-                num_variants_per_base=num_variants_per_base,
+                thr,
+                writer,
+                num_rounds,
+                num_variants_per_base,
             )
             summaries.append(summary)
 
-    # Print summary table
-    print("\n=== Simulation Summary by Threshold ===")
-    print(
-        "Threshold | Phish Attacks | Defender Wins | Attacker Wins | "
-        "Detect Rate | Bypass Rate |  TP |  FP |  TN |  FN | Precision | Recall |   F1  | Accuracy"
-    )
-    for s in summaries:
-        print(
-            f"{s['threshold']:8.2f} | "
-            f"{s['total_phishing_attacks']:13d} | "
-            f"{s['defender_wins']:13d} | "
-            f"{s['attacker_wins']:13d} | "
-            f"{s['detection_rate']:11.3f} | "
-            f"{s['bypass_rate']:11.3f} | "
-            f"{s['tp']:3d} | "
-            f"{s['fp']:3d} | "
-            f"{s['tn']:3d} | "
-            f"{s['fn']:3d} | "
-            f"{s['precision']:9.3f} | "
-            f"{s['recall']:6.3f} | "
-            f"{s['f1']:6.3f} | "
-            f"{s['accuracy']:8.3f}"
-        )
-
-    print(f"\nDetailed log saved to: {SIM_OUTPUT_PATH}")
+    print("\nSimulation complete.")
+    print(f"Detailed log saved to: {SIM_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
-    # tweak these for experiments
-    run_experiments(
-        thresholds=[0.5, 0.6, 0.7],
-        num_rounds=5,
-        num_variants_per_base=2,
-    )
+    run_experiments()
