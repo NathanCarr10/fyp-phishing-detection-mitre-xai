@@ -29,7 +29,22 @@ LABEL_MAP = {
 
 
 def load_data(path, text_col, label_col):
-    """Load the CSV file and return texts and labels."""
+    """
+    Load email dataset from CSV file.
+
+    Args:
+        path (str): Path to the CSV file containing email data.
+        text_col (str): Name of the column containing email text.
+        label_col (str): Name of the column containing binary labels (0/1).
+
+    Returns:
+        tuple: (texts, labels) where texts is array of email strings,
+               labels is array of binary labels.
+
+    Raises:
+        ValueError: If specified columns not found in CSV file.
+        FileNotFoundError: If CSV file does not exist.
+    """
     print("Loading dataset from:", path)
     df = pd.read_csv(path)
 
@@ -302,8 +317,22 @@ def load_model():
 
 def predict_single_email(text: str):
     """
-    Load the saved model and vectorizer, and predict for a single email text.
-    Returns: (predicted_label, predicted_label_name, probabilities_dict)
+    Classify a single email as phishing or legitimate.
+
+    Args:
+        text (str): Email text to classify.
+
+    Returns:
+        tuple: (pred_label, pred_name, prob_dict) where:
+               - pred_label: Integer label (0=legitimate, 1=phishing)
+               - pred_name: String label name
+               - prob_dict: Dict with probabilities {"legit": ..., "phishing": ...}
+
+    Raises:
+        FileNotFoundError: If model files not found. Run mvp_baseline.py first.
+
+    Note:
+        High-level convenience function for single email prediction.
     """
     vectorizer, clf = load_model()
     X = vectorizer.transform([text])

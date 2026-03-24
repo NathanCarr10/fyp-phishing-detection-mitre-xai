@@ -20,17 +20,108 @@ SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = os.path.join(SIM_OUTPUT_DIR, "attacker_simulation_log.csv")
 
 
-# ---------------- MITRE Mapping ---------------- #
+# ============== MITRE ATT&CK Mapping Patterns ============== #
+# Maps email characteristics to MITRE phishing techniques
 
-def mitre_mapping(email_text: str) -> str:
+MITRE_PATTERNS = {
+    'T1566.002': {
+        'name': 'Phishing: Link',
+        'patterns': ['http://', 'https://', 'www.', 'click here', 'click link', '.com/'],
+        'keywords': ['verify', 'confirm', 'validate', 'urgency', 'immediate'],
+        'description': 'Email phishing with malicious links'
+    },
+    'T1566.001': {
+        'name': 'Phishing: Attachment',
+        'patterns': ['attached', 'document', 'file', 'invoice', 'receipt', 'pdf', 'xlsx', 'docx'],
+        'keywords': ['download', 'open', 'review', 'urgent'],
+        'description': 'Email phishing with malicious attachments'
+    },
+    'T1598.003': {
+        'name': 'Spearphishing Link (Credible Lookalike)',
+        'patterns': ['linkedin', 'facebook', 'google', 'microsoft', 'apple', 'amazon'],
+        'keywords': ['social', 'profile', 'connect', 'invite', 'update'],
+        'description': 'Spearphishing targeting social media platforms'
+    },
+    'T1598.001': {
+        'name': 'Spearphishing Attachment',
+        'patterns': ['invoice', 'receipt', 'contract', 'document', 'spreadsheet'],
+        'keywords': ['sign', 'approve', 'review', 'urgent'],
+        'description': 'Targeted phishing with official-looking attachments'
+    },
+    'T1598.002': {
+        'name': 'Spearphishing Link (Shortened/Obfuscated)',
+        'patterns': ['bit.ly', 'tinyurl', 'goo.gl', 'short', 'tkt.link'],
+        'keywords': ['shorten', 'track', 'click'],
+        'description': 'Spearphishing with URL shorteners to hide destination'
+    },
+}
+
+
+def mitre_mapping(email_text: str, return_all: bool = False):
     """
-    Very simple MITRE ATT&CK mapping.
+    Map email to MITRE ATT&CK phishing techniques based on pattern matching.
+
+    Args:
+        email_text (str): Email text to analyze.
+        return_all (bool): If True, return all matching techniques (multi-label).
+                          If False (default), return single highest-confidence match.
+
+    Returns:
+        str or list: String technique code and name if return_all=False,
+                     List of matching techniques if return_all=True.
+                     Always includes primary fallback if no patterns match.
+
+    Example:
+        >>> text = "Click here to verify: http://phishing.com"
+        >>> mitre_mapping(text)
+        'T1566.002 - Phishing: Link'
+        >>> mitre_mapping(text, return_all=True)
+        ['T1566.002 - Phishing: Link']
+
+    Note:
+        - Patterns are matched case-insensitively
+        - Multi-label detection shows threat diversity
+        - Primary fallback is T1566.001 (generic phishing)
     """
     text_lower = email_text.lower()
+    matched_techniques = []
 
-    if "http://" in text_lower or "https://" in text_lower or "www." in text_lower or "click here" in text_lower:
-        return "T1566.002 - Phishing: Link"
-    return "T1566.001 - Phishing: Attachment/Generic"
+    # Score each technique based on pattern and keyword matches
+    technique_scores = {}
+
+    for tech_id, tech_info in MITRE_PATTERNS.items():
+        score = 0
+
+        # Check patterns (lower weight)
+        for pattern in tech_info['patterns']:
+            if pattern in text_lower:
+                score += 1
+
+        # Check keywords (higher weight)
+        for keyword in tech_info['keywords']:
+            if keyword in text_lower:
+                score += 2
+
+        if score > 0:
+            technique_scores[tech_id] = score
+            matched_techniques.append((tech_id, score))
+
+    # Return results
+    if return_all:
+        # Return all matches sorted by score
+        matched_techniques.sort(key=lambda x: x[1], reverse=True)
+        if matched_techniques:
+            return [f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}"
+                   for tech_id, _ in matched_techniques]
+        else:
+            return ["T1566.001 - Phishing: Attachment/Generic"]  # Fallback
+    else:
+        # Return single best match
+        if matched_techniques:
+            best_match = max(matched_techniques, key=lambda x: x[1])[0]
+            return f"{best_match} - {MITRE_PATTERNS[best_match]['name']}"
+        else:
+            return "T1566.001 - Phishing: Attachment/Generic"  # Fallback
 
 
 # ---------------- Attacker Rules ---------------- #
