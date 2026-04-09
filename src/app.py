@@ -32,6 +32,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from mvp_baseline import load_model
+from mvp_baseline import NB_MODEL_PATH, MODEL_PATH
 from xai_explainer import explain_email
 from attacker_sim import mitre_mapping
 from utils import classify_email as classify_email_utils
@@ -105,9 +106,12 @@ st.markdown("""
 # ================== CACHED MODEL LOADER ================== #
 
 @st.cache_resource
-def get_model():
+def get_model(model_choice: str = "logistic_regression"):
     """
     Load and cache the vectorizer and classifier.
+    
+    Args:
+        model_choice: "logistic_regression" or "naive_bayes"
     
     Returns:
         tuple: (vectorizer, classifier) or None if files not found
@@ -117,14 +121,22 @@ def get_model():
         Exception: For other loading errors
     """
     try:
-        vectorizer, clf = load_model()
+        # Select model path based on choice
+        if model_choice == "naive_bayes":
+            model_path = NB_MODEL_PATH
+            model_name = "Multinomial Naive Bayes"
+        else:
+            model_path = MODEL_PATH
+            model_name = "Logistic Regression"
+        
+        vectorizer, clf = load_model(model_path=model_path)
         return vectorizer, clf
     except FileNotFoundError as e:
         st.error(
             f"❌ **Model Files Not Found**\n\n"
             f"The trained model files are missing. Please run the following command first:\n\n"
             f"```\npython src/mvp_baseline.py\n```\n\n"
-            f"This will train the logistic regression model and save it to `models/`.\n\n"
+            f"This will train both the Logistic Regression and Naive Bayes models and save them to `models/`.\n\n"
             f"Error: {str(e)}"
         )
         st.stop()
@@ -210,6 +222,17 @@ def safe_explain_email(email_text: str, num_features: int, threshold: float, use
 
 st.sidebar.title("⚙️ Settings & Help")
 
+st.sidebar.subheader("Model Selection")
+
+model_choice = st.sidebar.radio(
+    "Choose Classification Model:",
+    options=["logistic_regression", "naive_bayes"],
+    format_func=lambda x: "🔵 Logistic Regression" if x == "logistic_regression" else "🟠 Multinomial Naive Bayes",
+    help="Compare predictions from different ML algorithms. Both use TF-IDF features.",
+)
+
+st.sidebar.divider()
+
 st.sidebar.subheader("Prediction Settings")
 
 threshold = st.sidebar.slider(
@@ -255,10 +278,13 @@ with st.sidebar.expander("How does this work?", expanded=False):
     4. **Shows** experiment results comparing defense strategies
     
     **Model Details:**
-    - Algorithm: Logistic Regression
+    - **Logistic Regression**: Linear classifier, good for interpretability
+    - **Multinomial Naive Bayes**: Probabilistic classifier, often effective for text
     - Features: TF-IDF (Term Frequency-Inverse Document Frequency)
     - Training Data: 1,000+ phishing & legitimate emails
     - XAI Method: LIME (Local Interpretable Model-agnostic Explanations)
+    
+    **Pro Tip:** Compare both models to see how different algorithms handle the same email!
     """)
 
 with st.sidebar.expander("What is MITRE ATT&CK?", expanded=False):
@@ -400,8 +426,8 @@ if analyse_clicked:
         st.warning(f"⚠️ {validation_msg}")
     else:
         try:
-            # Load model
-            vectorizer, clf = get_model()
+            # Load model based on sidebar selection
+            vectorizer, clf = get_model(model_choice=model_choice)
             
             # Classify email
             pred_label, phishing_prob = classify_email_utils(
