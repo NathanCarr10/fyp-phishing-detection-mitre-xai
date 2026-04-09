@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import roc_curve, roc_auc_score
 from lime.lime_text import LimeTextExplainer
@@ -20,6 +21,7 @@ LABEL_COLUMN = "label"
 MODEL_DIR = "models"
 VECTORIZER_PATH = os.path.join(MODEL_DIR, "tfidf_vectorizer.joblib")
 MODEL_PATH = os.path.join(MODEL_DIR, "logreg_model.joblib")
+NB_MODEL_PATH = os.path.join(MODEL_DIR, "multinomial_nb_model.joblib")
 
 # label names for printing and explanations
 LABEL_MAP = {
@@ -104,11 +106,19 @@ def vectorize_text(X_train, X_test):
     return vectorizer, X_train_tfidf, X_test_tfidf
 
 
-def train_model(X_train_tfidf, y_train):
-    """Train Logistic Regression classifier."""
-    clf = LogisticRegression(max_iter=1000, class_weight="balanced")
-
-    print("\nTraining Logistic Regression classifier...")
+def train_model(clf, X_train_tfidf, y_train):
+    """
+    Train a classifier on TF-IDF transformed data.
+    
+    Args:
+        clf: Scikit-learn classifier object (pre-instantiated)
+        X_train_tfidf: Sparse matrix of TF-IDF features
+        y_train: Array of training labels
+    
+    Returns:
+        Trained classifier object
+    """
+    print(f"\nTraining {clf.__class__.__name__}...")
     clf.fit(X_train_tfidf, y_train)
     return clf
 
@@ -295,32 +305,51 @@ def plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png"):
 
 # Model save/load + single email prediction
 
-def save_model(vectorizer, clf):
-    """Save the trained vectorizer and model to disk."""
+def save_model(vectorizer, clf, model_path=MODEL_PATH):
+    """
+    Save the trained vectorizer and model to disk.
+    
+    Args:
+        vectorizer: Fitted TfidfVectorizer
+        clf: Trained classifier
+        model_path: Path to save the model (default: Logistic Regression path)
+    """
     os.makedirs(MODEL_DIR, exist_ok=True)
     joblib.dump(vectorizer, VECTORIZER_PATH)
-    joblib.dump(clf, MODEL_PATH)
+    joblib.dump(clf, model_path)
     print(f"\nSaved vectorizer to: {VECTORIZER_PATH}")
-    print(f"Saved model to:      {MODEL_PATH}")
+    print(f"Saved model to:      {model_path}")
 
 
-def load_model():
-    """Load the vectorizer and model from disk."""
-    if not (os.path.exists(VECTORIZER_PATH) and os.path.exists(MODEL_PATH)):
+def load_model(model_path=MODEL_PATH):
+    """
+    Load the vectorizer and model from disk.
+    
+    Args:
+        model_path: Path to load the model from (default: Logistic Regression path)
+    
+    Returns:
+        tuple: (vectorizer, classifier)
+    """
+    if not (os.path.exists(VECTORIZER_PATH) and os.path.exists(model_path)):
         raise FileNotFoundError(
-            "Model files not found. Train the model and run save_model() first."
+            f"Model files not found. Train the model and run save_model() first.\n"
+            f"Looking for: {VECTORIZER_PATH} and {model_path}"
         )
     vectorizer = joblib.load(VECTORIZER_PATH)
-    clf = joblib.load(MODEL_PATH)
+    clf = joblib.load(model_path)
     return vectorizer, clf
 
 
-def predict_single_email(text: str):
+def predict_single_email(text: str, model_path=MODEL_PATH):
     """
     Classify a single email as phishing or legitimate.
 
     Args:
         text (str): Email text to classify.
+        model_path (str): Path to the model file. 
+                         Default: Logistic Regression
+                         Alternative: NB_MODEL_PATH for Naive Bayes
 
     Returns:
         tuple: (pred_label, pred_name, prob_dict) where:
@@ -334,7 +363,7 @@ def predict_single_email(text: str):
     Note:
         High-level convenience function for single email prediction.
     """
-    vectorizer, clf = load_model()
+    vectorizer, clf = load_model(model_path=model_path)
     X = vectorizer.transform([text])
     proba = clf.predict_proba(X)[0]
     pred = clf.predict(X)[0]
@@ -356,36 +385,66 @@ def main():
     X_train, X_test, y_train, y_test = split_data(texts, labels)
     vectorizer, X_train_tfidf, X_test_tfidf = vectorize_text(X_train, X_test)
 
-    # 2. Train model
-    clf = train_model(X_train_tfidf, y_train)
+    # 2. Train Logistic Regression model
+    print("\n" + "="*60)
+    print("TRAINING LOGISTIC REGRESSION MODEL")
+    print("="*60)
+    clf_logreg = LogisticRegression(max_iter=1000, class_weight="balanced")
+    clf_logreg = train_model(clf_logreg, X_train_tfidf, y_train)
 
-    # 3. Evaluate
-    y_pred = evaluate_model(clf, X_test_tfidf, y_test)
+    # 3. Evaluate Logistic Regression
+    y_pred_logreg = evaluate_model(clf_logreg, X_test_tfidf, y_test)
 
-    # 4. ROC + AUC
-    plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png")
+    # 4. ROC + AUC for Logistic Regression
+    plot_roc_auc(clf_logreg, X_test_tfidf, y_test, out_path="roc_curve_logreg.png")
 
-    # 5. Show some predictions
-    show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred)
+    # 5. Train Multinomial Naive Bayes model
+    print("\n" + "="*60)
+    print("TRAINING MULTINOMIAL NAIVE BAYES MODEL")
+    print("="*60)
+    clf_nb = MultinomialNB()
+    clf_nb = train_model(clf_nb, X_train_tfidf, y_train)
 
-    # 6. Save model + vectorizer for reuse (web app, simulations, etc.)
-    save_model(vectorizer, clf)
+    # 6. Evaluate Multinomial Naive Bayes
+    y_pred_nb = evaluate_model(clf_nb, X_test_tfidf, y_test)
 
-    # 7. LIME explanation for one test email
+    # 7. ROC + AUC for Multinomial Naive Bayes
+    plot_roc_auc(clf_nb, X_test_tfidf, y_test, out_path="roc_curve_nb.png")
+
+    # 8. Save both models + vectorizer for reuse (web app, simulations, etc.)
+    print("\n" + "="*60)
+    print("SAVING MODELS")
+    print("="*60)
+    save_model(vectorizer, clf_logreg, model_path=MODEL_PATH)
+    save_model(vectorizer, clf_nb, model_path=NB_MODEL_PATH)
+
+    # 9. Show some predictions
+    print("\n" + "="*60)
+    print("EXAMPLE PREDICTIONS (Logistic Regression)")
+    print("="*60)
+    show_example_predictions(clf_logreg, X_test, X_test_tfidf, y_test, y_pred_logreg)
+
+    # 10. LIME explanation for one test email (Logistic Regression)
     sample_index = 0
     sample_text = X_test[sample_index]
-    print("\nExplaining this email (index 0) with LIME:")
+    print("\n" + "="*60)
+    print("LIME EXPLANATION (Logistic Regression)")
+    print("="*60)
+    print("Explaining this email (index 0):")
     print(sample_text[:300].replace("\n", " "))
 
-    explain_with_lime(clf, vectorizer, sample_text)
+    explain_with_lime(clf_logreg, vectorizer, sample_text)
 
-    # 8. SHAP explanations
+    # 11. SHAP explanations (Logistic Regression)
+    print("\n" + "="*60)
+    print("SHAP EXPLANATIONS (Logistic Regression)")
+    print("="*60)
     feature_names = vectorizer.get_feature_names_out()
-    explainer = build_shap_explainer(clf, X_train_tfidf, background_size=2000)
+    explainer = build_shap_explainer(clf_logreg, X_train_tfidf, background_size=2000)
 
     explain_with_shap_global(
         explainer,
-        clf,
+        clf_logreg,
         X_train_tfidf,
         feature_names,
         top_n=20,
@@ -394,7 +453,7 @@ def main():
 
     explain_with_shap_local(
         explainer,
-        clf,
+        clf_logreg,
         X_test_tfidf,
         feature_names,
         index=sample_index,
@@ -402,13 +461,23 @@ def main():
         top_n=10,
     )
 
-    # Optional: quick demo of predict_single_email using the saved model
+    # 12. Optional: quick demo of predict_single_email using the saved model
+    print("\n" + "="*60)
+    print("SINGLE EMAIL PREDICTION DEMO")
+    print("="*60)
     demo_text = "Your account has been locked. Please click this link to verify your details."
+    print("\nLogistic Regression predictions:")
     pred, pred_name, probs = predict_single_email(demo_text)
-    print("\nSingle email prediction demo (using saved model):")
     print("Text:", demo_text)
     print("Predicted:", pred_name, f"({pred})")
     print("Probabilities:", probs)
+
+    print("\nMultinomial Naive Bayes predictions:")
+    pred_nb, pred_name_nb, probs_nb = predict_single_email(demo_text, model_path=NB_MODEL_PATH)
+    print("Text:", demo_text)
+    print("Predicted:", pred_name_nb, f"({pred_nb})")
+    print("Probabilities:", probs_nb)
+
 
 
 if __name__ == "__main__":
