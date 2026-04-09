@@ -16,10 +16,8 @@
 # Run from project root:
 #   streamlit run src/app.py
 
-import os
 import sys
 from pathlib import Path
-from datetime import datetime
 
 import streamlit as st
 
@@ -33,9 +31,7 @@ if str(SRC_DIR) not in sys.path:
 
 from mvp_baseline import load_model
 from mvp_baseline import NB_MODEL_PATH, MODEL_PATH
-from xai_explainer import explain_email
-from attacker_sim import mitre_mapping
-from utils import classify_email as classify_email_utils
+from email_ingestion import parse_eml_file, analyze_combined_text
 
 
 # ================== PATHS ================== #
@@ -197,27 +193,6 @@ def get_confidence_label(prob: float) -> str:
         return "Very Low Confidence"
 
 
-def safe_explain_email(email_text: str, num_features: int, threshold: float, use_lime: bool) -> dict:
-    """
-    Safely explain an email with error handling.
-    
-    Returns:
-        dict: Explanation result or error info
-    """
-    try:
-        return explain_email(
-            email_text,
-            num_features=num_features,
-            threshold=threshold,
-            use_lime=use_lime,
-        )
-    except Exception as e:
-        return {
-            "method": f"⚠️ Explanation Error: {str(e)}",
-            "top_features": [],
-        }
-
-
 # ================== SIDEBAR ================== #
 
 st.sidebar.title("⚙️ Settings & Help")
@@ -317,7 +292,7 @@ st.sidebar.info("💡 Tip: Use different thresholds to balance false positives v
 st.title("🔒 Phishing Detection with XAI & MITRE Mapping")
 
 st.markdown("""
-Paste an email below to:
+Provide email content below to:
 - ✅ Detect if it's phishing or legitimate
 - 📊 See the confidence score and key indicators
 - 🗺️ Map to MITRE ATT&CK phishing techniques
@@ -386,41 +361,96 @@ with col2:
 
 st.subheader("📧 Email Input")
 
+input_mode = st.radio(
+    "Input Mode",
+    options=["Manual Text", "Upload .eml File"],
+    horizontal=True,
+    help="Use manual text entry or upload a local .eml message file.",
+)
+
 default_email = example_emails["⚠️ Account Suspension (Phishing)"]
 
 if "email_text" not in st.session_state:
     st.session_state.email_text = default_email
 
-email_text = st.text_area(
-    "Paste email content below (plain text only):",
-    value=st.session_state.email_text,
-    height=200,
-    placeholder="Paste full email header and body here...",
-)
+analysis_text = ""
+parsed_email_data = None
+analyse_clicked = False
 
-st.session_state.email_text = email_text
+if input_mode == "Manual Text":
+    email_text = st.text_area(
+        "Paste email content below (plain text only):",
+        value=st.session_state.email_text,
+        height=200,
+        placeholder="Paste full email header and body here...",
+    )
 
-col1, col2, col3 = st.columns([2, 1, 1])
+    st.session_state.email_text = email_text
+    analysis_text = email_text
 
-with col1:
-    analyse_clicked = st.button("🔍 Analyse Email", type="primary", use_container_width=True)
+    col1, col2, col3 = st.columns([2, 1, 1])
 
-with col2:
-    if st.button("🗑️ Clear", use_container_width=True):
-        st.session_state.email_text = ""
-        st.rerun()
+    with col1:
+        analyse_clicked = st.button("🔍 Analyse Email", type="primary", use_container_width=True)
 
-with col3:
-    if st.button("📋 Load Phishing", use_container_width=True):
-        st.session_state.email_text = example_emails["⚠️ Account Suspension (Phishing)"]
-        st.rerun()
+    with col2:
+        if st.button("🗑️ Clear", use_container_width=True):
+            st.session_state.email_text = ""
+            st.rerun()
 
+    with col3:
+        if st.button("📋 Load Phishing", use_container_width=True):
+            st.session_state.email_text = example_emails["⚠️ Account Suspension (Phishing)"]
+            st.rerun()
+else:
+    uploaded_file = st.file_uploader(
+        "Upload a local .eml file",
+        type=["eml"],
+        help="Parses email headers/body safely. Attachments are listed by filename only.",
+    )
+
+    if uploaded_file is not None:
+        try:
+            parsed_email_data = parse_eml_file(uploaded_file.getvalue())
+            analysis_text = parsed_email_data["combined_text"]
+
+            st.markdown("### 📄 Parsed Email Metadata")
+            meta_col1, meta_col2 = st.columns(2)
+
+            with meta_col1:
+                st.text_input("From", value=parsed_email_data.get("from", ""), disabled=True)
+                st.text_input("To", value=parsed_email_data.get("to", ""), disabled=True)
+
+            with meta_col2:
+                st.text_input("Subject", value=parsed_email_data.get("subject", ""), disabled=True)
+                st.text_input("Date", value=parsed_email_data.get("date", ""), disabled=True)
+
+            attachment_names = parsed_email_data.get("attachment_names", [])
+            if attachment_names:
+                st.caption("Attachments (filenames only):")
+                st.write(", ".join(attachment_names))
+            else:
+                st.caption("Attachments: none detected")
+
+            st.text_area(
+                "Extracted Body (safe text)",
+                value=parsed_email_data.get("body", ""),
+                height=180,
+                disabled=True,
+            )
+
+            analyse_clicked = st.button("🔍 Analyse Uploaded Email", type="primary", use_container_width=True)
+        except Exception as e:
+            st.error(f"❌ Could not parse .eml file: {str(e)}")
+            analyse_clicked = False
+    else:
+        st.info("Upload a `.eml` file to parse and analyze it.")
 
 # ================== MAIN ANALYSIS ================== #
 
 if analyse_clicked:
     # Validate input
-    is_valid, validation_msg = validate_email_input(email_text)
+    is_valid, validation_msg = validate_email_input(analysis_text)
     
     if not is_valid:
         st.warning(f"⚠️ {validation_msg}")
@@ -428,27 +458,22 @@ if analyse_clicked:
         try:
             # Load model based on sidebar selection
             vectorizer, clf = get_model(model_choice=model_choice)
-            
-            # Classify email
-            pred_label, phishing_prob = classify_email_utils(
-                vectorizer,
-                clf,
-                email_text,
+
+            # Shared analysis flow for manual text and uploaded .eml content.
+            analysis_result = analyze_combined_text(
+                analysis_text,
                 threshold=threshold,
-            )
-            
-            # Get MITRE mapping
-            mitre_label = mitre_mapping(email_text)
-            
-            # Get explanation
-            explanation = safe_explain_email(
-                email_text,
                 num_features=num_features,
-                threshold=threshold,
                 use_lime=use_lime,
+                vectorizer=vectorizer,
+                clf=clf,
             )
+
+            pred_label = analysis_result["predicted_label"]
+            phishing_prob = analysis_result["phishing_probability"]
+            mitre_label = analysis_result["mitre_mapping"]
+            explanation = analysis_result["xai_explanation"]
             
-            prediction_text = "🚨 Phishing" if pred_label == 1 else "✅ Legitimate"
             confidence_label = get_confidence_label(phishing_prob)
             
             # ===== RESULT CARDS =====
@@ -587,7 +612,7 @@ if analyse_clicked:
                 f"❌ **Analysis Error**\n\n"
                 f"An unexpected error occurred: {str(e)}\n\n"
                 f"**Debugging Info:**\n"
-                f"- Email length: {len(email_text)} characters\n"
+                f"- Email length: {len(analysis_text)} characters\n"
                 f"- Threshold: {threshold}\n\n"
                 f"Please try again or contact support."
             )
