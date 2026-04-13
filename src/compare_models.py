@@ -39,7 +39,8 @@ if str(SRC_DIR) not in sys.path:
 
 # ================== CONFIGURATION ================== #
 
-DATA_PATH = "data/processed/english_dataset.csv"
+BALANCED_DATA_PATH = "data/processed/english_dataset_balanced.csv"
+DATA_PATH = BALANCED_DATA_PATH if os.path.exists(BALANCED_DATA_PATH) else "data/processed/english_dataset.csv"
 TEXT_COLUMN = "text"
 LABEL_COLUMN = "label"
 

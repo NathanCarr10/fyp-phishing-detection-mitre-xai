@@ -43,6 +43,8 @@ This project implements an **AI-powered email phishing detection system** with i
 
 ### Running the Project
 
+The training pipeline now prefers a balanced processed dataset at `data/processed/english_dataset_balanced.csv`. The original combined dataset is still kept at `data/processed/english_dataset.csv` for reference.
+
 #### 1. Train the Baseline Model
 
 ```bash

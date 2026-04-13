@@ -11,6 +11,7 @@ import pandas as pd
 
 RAW_DIR = "data/raw"
 OUT_PATH = "data/processed/english_dataset.csv"
+BALANCED_OUT_PATH = "data/processed/english_dataset_balanced.csv"
 
 # Choose which files to use and what label they represent
 SOURCES = [
@@ -60,7 +61,7 @@ def load_source(filename: str, label_value: int) -> pd.DataFrame:
     print(f"Using text column: {text_col}")
 
     out = pd.DataFrame({
-        "text": df[text_col].astype(str),
+        "text": df[text_col].fillna("").astype(str),
         "label": label_value
     })
 
@@ -70,6 +71,25 @@ def load_source(filename: str, label_value: int) -> pd.DataFrame:
 
     print(f"Rows kept: {len(out)}")
     return out
+
+
+def balance_dataset(df: pd.DataFrame, label_col: str = "label", seed: int = 42) -> pd.DataFrame:
+    """Downsample the majority class so both labels have the same row count."""
+    counts = df[label_col].value_counts()
+    if counts.empty or len(counts) < 2:
+        raise ValueError("Need at least two classes to balance the dataset.")
+
+    target_size = counts.min()
+    balanced_parts = []
+
+    for label_value, group in df.groupby(label_col):
+        if len(group) > target_size:
+            group = group.sample(n=target_size, random_state=seed)
+        balanced_parts.append(group)
+
+    balanced = pd.concat(balanced_parts, ignore_index=True)
+    balanced = balanced.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return balanced
 
 
 def main():
@@ -84,12 +104,17 @@ def main():
     # Shuffle rows so train/test is mixed
     combined = combined.sample(frac=1, random_state=42).reset_index(drop=True)
 
+    balanced = balance_dataset(combined)
+
     # Ensure output folder exists
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
 
     combined.to_csv(OUT_PATH, index=False)
+    balanced.to_csv(BALANCED_OUT_PATH, index=False)
     print(f"\nSaved combined dataset to: {OUT_PATH}")
     print(combined["label"].value_counts())
+    print(f"\nSaved balanced dataset to: {BALANCED_OUT_PATH}")
+    print(balanced["label"].value_counts())
 
 
 if __name__ == "__main__":
