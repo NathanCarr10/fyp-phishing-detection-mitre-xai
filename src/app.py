@@ -490,7 +490,7 @@ if analyse_clicked:
                 if pred_label == 1:
                     st.error(f"### 🚨 **PHISHING**", icon="⚠️")
                 else:
-                    st.success(f"### ✅ **LEGITIMATE**", icon="✓")
+                    st.success(f"### ✅ **LEGITIMATE**", icon="✅")
             
             # Probability card
             with col2:
@@ -629,6 +629,11 @@ if show_figures:
     st.info(
         "These figures show the performance of the phishing detection system "
         "against adversarial attacks with different thresholds and rule combinations."
+    )
+    st.caption(
+        "Note: These charts are pre-generated files from simulation runs and do not "
+        "change when you switch the model in the sidebar. The model selector affects "
+        "the live email analysis section above."
     )
     
     figure_files = [
