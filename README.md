@@ -99,6 +99,12 @@ This will:
 streamlit run src/app.py
 ```
 
+If `streamlit` or `python` is not on your PATH, use the repo launcher instead:
+
+```powershell
+.\run_app.cmd
+```
+
 This will:
 - Start a local web server (http://localhost:8501)
 - Provide interactive interface for:

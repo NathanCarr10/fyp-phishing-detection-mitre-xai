@@ -16,6 +16,8 @@
 # Run from project root:
 #   streamlit run src/app.py
 
+# To run app use .\run_app.ps1 in powershell
+
 import sys
 from pathlib import Path
 
