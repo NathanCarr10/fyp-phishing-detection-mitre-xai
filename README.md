@@ -102,6 +102,19 @@ This will:
 - Report multi-label exact-match and micro precision/recall/F1
 - Save outputs to `evaluation_results/`
 
+#### 1d. Run Error Analysis Artifacts (Stage 4)
+
+```bash
+python src/run_error_analysis.py
+```
+
+This will:
+- Recreate the standard holdout test split (seed 42)
+- Save false positives and false negatives for report writing
+- Save hardest false positives/false negatives (highest-confidence mistakes)
+- Save top tokens seen in error cases
+- Save outputs to `evaluation_results/error_analysis/`
+
 #### 2. Run the Attacker Simulation
 
 ```bash
@@ -172,6 +185,7 @@ fyp-phishing-detection-mitre-xai/
 │   ├── analyse_simulation_results.py # Analysis pipeline
 │   ├── visualise_results.py          # Visualization generation
 │   ├── build_dataset.py              # Dataset preprocessing
+│   ├── run_error_analysis.py          # Stage 4 error-analysis artifact generator
 │   ├── app.py                        # Streamlit dashboard
 │   └── utils.py                      # Shared utility functions
 │
@@ -190,7 +204,7 @@ fyp-phishing-detection-mitre-xai/
 │   ├── analysis/                     # Summary statistics CSVs
 │   └── figures/                      # Generated visualizations
 │
-├── evaluation_results/               # Rigorous evaluation outputs (CV, CI, threshold, calibration)
+├── evaluation_results/               # Rigorous eval + MITRE eval + error-analysis outputs
 │
 ├── tests/
 │   ├── test_mvp_baseline.py
