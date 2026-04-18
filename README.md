@@ -77,6 +77,19 @@ This will:
 - Display evaluation metrics (accuracy, precision, recall, F1, AUC)
 - Generate ROC curve visualization
 
+#### 1b. Run Rigorous Evaluation (Cross-Validation + CI + Threshold + Calibration)
+
+```bash
+python src/evaluate_models_rigorously.py
+```
+
+This will:
+- Run repeated stratified cross-validation for Logistic Regression and Naive Bayes
+- Compute 95% confidence intervals for key metrics
+- Generate threshold sensitivity results for Logistic Regression
+- Compute calibration diagnostics (Brier score and ECE)
+- Save outputs to `evaluation_results/`
+
 #### 2. Run the Attacker Simulation
 
 ```bash
@@ -164,6 +177,8 @@ fyp-phishing-detection-mitre-xai/
 │   ├── attacker_simulation_log.csv   # Raw simulation logs
 │   ├── analysis/                     # Summary statistics CSVs
 │   └── figures/                      # Generated visualizations
+│
+├── evaluation_results/               # Rigorous evaluation outputs (CV, CI, threshold, calibration)
 │
 ├── tests/
 │   ├── test_mvp_baseline.py
