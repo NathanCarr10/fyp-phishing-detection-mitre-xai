@@ -1,6 +1,8 @@
 import os
+import warnings
 import numpy as np
 import pandas as pd
+from sklearn import __version__ as sklearn_version
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -39,6 +41,33 @@ LABEL_MAP = {
     0: "legit",
     1: "phishing",
 }
+
+
+def _extract_training_sklearn_version(obj):
+    return getattr(obj, "_sklearn_version", None) or getattr(obj, "__sklearn_version__", None)
+
+
+def get_model_compatibility_warning(vectorizer, clf):
+    """Return warning text when runtime sklearn differs from model training version."""
+    runtime = sklearn_version
+    trained_versions = {
+        _extract_training_sklearn_version(vectorizer),
+        _extract_training_sklearn_version(clf),
+    }
+    trained_versions.discard(None)
+
+    if not trained_versions:
+        return None
+
+    if runtime in trained_versions:
+        return None
+
+    trained = ", ".join(sorted(trained_versions))
+    return (
+        "Model compatibility warning: model files were trained with scikit-learn "
+        f"version(s) [{trained}] but runtime version is [{runtime}]. "
+        "Predictions may be unreliable. Use pinned requirements or retrain models."
+    )
 
 
 def load_data(path, text_col, label_col):
@@ -356,6 +385,9 @@ def load_model(model_path=MODEL_PATH):
         )
     vectorizer = joblib.load(VECTORIZER_PATH)
     clf = joblib.load(model_path)
+    warning_text = get_model_compatibility_warning(vectorizer, clf)
+    if warning_text:
+        warnings.warn(warning_text)
     return vectorizer, clf
 
 

@@ -54,7 +54,7 @@ MITRE_PATTERNS = {
 }
 
 
-def mitre_mapping(email_text: str, return_all: bool = False):
+def mitre_mapping(email_text: str, return_all: bool = False, return_details: bool = False):
     """
     Map email to MITRE ATT&CK phishing techniques based on pattern matching.
 
@@ -62,6 +62,8 @@ def mitre_mapping(email_text: str, return_all: bool = False):
         email_text (str): Email text to analyze.
         return_all (bool): If True, return all matching techniques (multi-label).
                           If False (default), return single highest-confidence match.
+        return_details (bool): If True, return additional metadata including
+                      per-technique scores and confidence.
 
     Returns:
         str or list: String technique code and name if return_all=False,
@@ -107,6 +109,22 @@ def mitre_mapping(email_text: str, return_all: bool = False):
     if return_all:
         # Return all matches sorted by score
         matched_techniques.sort(key=lambda x: x[1], reverse=True)
+        if return_details:
+            total_score = sum(score for _, score in matched_techniques) or 1
+            primary_score = matched_techniques[0][1] if matched_techniques else 0
+            confidence = float(primary_score / total_score)
+            return {
+                "primary": (
+                    f"{matched_techniques[0][0]} - {MITRE_PATTERNS[matched_techniques[0][0]]['name']}"
+                    if matched_techniques
+                    else "T1566.001 - Phishing: Attachment/Generic"
+                ),
+                "alternatives": [
+                    f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}" for tech_id, _ in matched_techniques
+                ] or ["T1566.001 - Phishing: Attachment/Generic"],
+                "scores": {tech_id: score for tech_id, score in matched_techniques},
+                "confidence": confidence,
+            }
         if matched_techniques:
             return [f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}"
                    for tech_id, _ in matched_techniques]
@@ -115,9 +133,29 @@ def mitre_mapping(email_text: str, return_all: bool = False):
     else:
         # Return single best match
         if matched_techniques:
+            matched_techniques.sort(key=lambda x: x[1], reverse=True)
             best_match = max(matched_techniques, key=lambda x: x[1])[0]
+            if return_details:
+                total_score = sum(score for _, score in matched_techniques) or 1
+                primary_score = matched_techniques[0][1]
+                confidence = float(primary_score / total_score)
+                return {
+                    "primary": f"{best_match} - {MITRE_PATTERNS[best_match]['name']}",
+                    "alternatives": [
+                        f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}" for tech_id, _ in matched_techniques
+                    ],
+                    "scores": {tech_id: score for tech_id, score in matched_techniques},
+                    "confidence": confidence,
+                }
             return f"{best_match} - {MITRE_PATTERNS[best_match]['name']}"
         else:
+            if return_details:
+                return {
+                    "primary": "T1566.001 - Phishing: Attachment/Generic",
+                    "alternatives": ["T1566.001 - Phishing: Attachment/Generic"],
+                    "scores": {},
+                    "confidence": 0.0,
+                }
             return "T1566.001 - Phishing: Attachment/Generic"  # Fallback
 
 

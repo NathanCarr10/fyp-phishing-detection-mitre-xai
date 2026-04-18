@@ -33,6 +33,7 @@ if str(SRC_DIR) not in sys.path:
 
 from mvp_baseline import load_model
 from mvp_baseline import NB_MODEL_PATH, MODEL_PATH
+from mvp_baseline import get_model_compatibility_warning
 from email_ingestion import parse_eml_file, analyze_combined_text
 
 
@@ -128,6 +129,9 @@ def get_model(model_choice: str = "logistic_regression"):
             model_name = "Logistic Regression"
         
         vectorizer, clf = load_model(model_path=model_path)
+        warning_text = get_model_compatibility_warning(vectorizer, clf)
+        if warning_text:
+            st.warning(warning_text)
         return vectorizer, clf
     except FileNotFoundError as e:
         st.error(

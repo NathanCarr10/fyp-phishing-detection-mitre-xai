@@ -35,6 +35,9 @@ This project implements an **AI-powered email phishing detection system** with i
    pip install -r requirements.txt
    ```
 
+   Dependencies are pinned for reproducibility. Avoid mixing package versions
+   with previously trained model files.
+
 3. **Download and prepare datasets:**
    ```bash
    # See data/README.md for detailed instructions
@@ -258,6 +261,9 @@ Simple pattern-based mapping to detect common phishing techniques:
 MITRE mapping quality can be measured using the manually labeled validation subset at
 `data/processed/mitre_validation_subset.csv` via `src/evaluate_mitre_mapping.py`.
 
+The mapper now also supports optional confidence metadata via:
+`mitre_mapping(email_text, return_details=True)`.
+
 *Note: Mapping can be extended to cover more MITRE techniques. See ARCHITECTURE.md.*
 
 ### Adversarial Simulation
@@ -320,6 +326,18 @@ The adversarial simulation tests model robustness against:
 | joblib | Model persistence |
 
 See `requirements.txt` for specific versions.
+
+## Continuous Integration
+
+This repository includes a CI workflow that runs the full test suite on push and pull requests:
+
+- `.github/workflows/ci.yml`
+
+Local equivalent:
+
+```bash
+python -m pytest -q
+```
 
 ## Usage Examples
 

@@ -19,6 +19,9 @@ Minimum:
 - Python 3.8+
 - `pip install -r requirements.txt`
 
+For submission-grade reproducibility, use the pinned versions in `requirements.txt`
+without modification.
+
 Recommended for thesis reproducibility records:
 
 1. Record the Python executable path (`python -c "import sys; print(sys.executable)"`)
@@ -38,6 +41,22 @@ The reproducibility runner also exports:
 - `FYP_RANDOM_SEED=42`
 
 Use seed `42` when you need output-identical reruns for dissertation evidence.
+
+## Dependency and Model Version Compatibility
+
+Model artifacts (`.joblib`) are version-sensitive, especially for scikit-learn.
+
+Guidelines:
+
+1. Train and evaluate with the same pinned environment from `requirements.txt`.
+2. If you retrain models, commit both the new model files and updated reproducibility notes.
+3. If runtime and training scikit-learn versions differ, the code now emits a compatibility warning.
+
+Quick check:
+
+```bash
+python -c "import sklearn; print(sklearn.__version__)"
+```
 
 ## One-Command Reproduction
 
