@@ -7,10 +7,20 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import roc_curve, roc_auc_score
-from lime.lime_text import LimeTextExplainer
 import matplotlib.pyplot as plt
-import shap
 import joblib
+
+try:
+    from lime.lime_text import LimeTextExplainer
+    _LIME_AVAILABLE = True
+except ImportError:
+    _LIME_AVAILABLE = False
+
+try:
+    import shap
+    _SHAP_AVAILABLE = True
+except ImportError:
+    _SHAP_AVAILABLE = False
 
 # Paths and column names
 BALANCED_DATA_PATH = "data/processed/english_dataset_balanced.csv"
@@ -167,6 +177,10 @@ def show_example_predictions(clf, X_test, X_test_tfidf, y_test, y_pred, num_exam
 
 def explain_with_lime(clf, vectorizer, text_sample):
     """Use LIME to explain one email."""
+    if not _LIME_AVAILABLE:
+        print("\nLIME not installed. Skipping LIME explanation.")
+        return
+
     def predict_proba(text_list):
         X = vectorizer.transform(text_list)
         return clf.predict_proba(X)
@@ -205,6 +219,9 @@ def sample_rows(X, n=2000, seed=42):
 
 def build_shap_explainer(clf, X_train_tfidf, background_size=2000):
     """Create a SHAP explainer using a small background sample."""
+    if not _SHAP_AVAILABLE:
+        raise RuntimeError("SHAP not installed. Cannot build SHAP explainer.")
+
     print("\nBuilding SHAP explainer (using a small background sample)...")
     X_bg, _ = sample_rows(X_train_tfidf, n=background_size, seed=42)
     explainer = shap.LinearExplainer(clf, X_bg)
@@ -437,30 +454,33 @@ def main():
     explain_with_lime(clf_logreg, vectorizer, sample_text)
 
     # 11. SHAP explanations (Logistic Regression)
-    print("\n" + "="*60)
-    print("SHAP EXPLANATIONS (Logistic Regression)")
-    print("="*60)
-    feature_names = vectorizer.get_feature_names_out()
-    explainer = build_shap_explainer(clf_logreg, X_train_tfidf, background_size=2000)
+    if _SHAP_AVAILABLE:
+        print("\n" + "="*60)
+        print("SHAP EXPLANATIONS (Logistic Regression)")
+        print("="*60)
+        feature_names = vectorizer.get_feature_names_out()
+        explainer = build_shap_explainer(clf_logreg, X_train_tfidf, background_size=2000)
 
-    explain_with_shap_global(
-        explainer,
-        clf_logreg,
-        X_train_tfidf,
-        feature_names,
-        top_n=20,
-        sample_size=2000,
-    )
+        explain_with_shap_global(
+            explainer,
+            clf_logreg,
+            X_train_tfidf,
+            feature_names,
+            top_n=20,
+            sample_size=2000,
+        )
 
-    explain_with_shap_local(
-        explainer,
-        clf_logreg,
-        X_test_tfidf,
-        feature_names,
-        index=sample_index,
-        y_test=y_test,
-        top_n=10,
-    )
+        explain_with_shap_local(
+            explainer,
+            clf_logreg,
+            X_test_tfidf,
+            feature_names,
+            index=sample_index,
+            y_test=y_test,
+            top_n=10,
+        )
+    else:
+        print("\nSHAP not installed. Skipping SHAP explanations.")
 
     # 12. Optional: quick demo of predict_single_email using the saved model
     print("\n" + "="*60)

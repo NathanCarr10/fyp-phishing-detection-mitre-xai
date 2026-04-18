@@ -8,6 +8,27 @@ import os
 from pathlib import Path
 from typing import Optional
 
+
+def _align_features_for_classifier(X, clf):
+    """Align transformed feature matrix with classifier expected feature count."""
+    expected_features = getattr(clf, "n_features_in_", None)
+    if expected_features is None and hasattr(clf, "coef_"):
+        expected_features = clf.coef_.shape[1]
+
+    if expected_features is None:
+        return X
+
+    current_features = X.shape[1]
+    if current_features == expected_features:
+        return X
+
+    if current_features > expected_features:
+        return X[:, :expected_features]
+
+    raise ValueError(
+        f"Vectorizer produced {current_features} features, but classifier expects {expected_features}."
+    )
+
 def classify_email(vectorizer, clf, text: str, threshold: float = 0.5):
     """
     Classify an email as phishing or legitimate with custom threshold.
@@ -43,6 +64,7 @@ def classify_email(vectorizer, clf, text: str, threshold: float = 0.5):
         raise ValueError("Email text must be a non-empty string.")
 
     X = vectorizer.transform([text])
+    X = _align_features_for_classifier(X, clf)
     proba = clf.predict_proba(X)[0]
 
     # Find the index of the phishing class (label=1)

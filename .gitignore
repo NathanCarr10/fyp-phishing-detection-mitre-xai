@@ -1,3 +1,14 @@
 # Ignore data files and large CSVs
 data/
 *.csv
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local virtual environments
+.venv/
+venv/
+env/

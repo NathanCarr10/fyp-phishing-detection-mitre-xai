@@ -41,6 +41,23 @@ _vectorizer = None
 _clf = None
 
 
+def _align_features_for_classifier(X, clf):
+    """Align transformed features with classifier expected input size."""
+    expected_features = getattr(clf, "n_features_in_", None)
+    if expected_features is None and hasattr(clf, "coef_"):
+        expected_features = clf.coef_.shape[1]
+
+    if expected_features is None or X.shape[1] == expected_features:
+        return X
+
+    if X.shape[1] > expected_features:
+        return X[:, :expected_features]
+
+    raise ValueError(
+        f"Vectorizer produced {X.shape[1]} features, but classifier expects {expected_features}."
+    )
+
+
 def _get_model():
     """
     Lazy-load and cache the TF-IDF vectorizer and classifier.
@@ -126,6 +143,7 @@ def _explain_with_lime(
     # an array of probabilities for each class.
     def predict_proba(texts: List[str]):
         X = vectorizer.transform(texts)
+        X = _align_features_for_classifier(X, clf)
         return clf.predict_proba(X)
 
     # Class names: align indices with clf.classes_
@@ -185,6 +203,7 @@ def _explain_with_linear_weights(
 
     # Transform text to TF-IDF vector
     X = vectorizer.transform([text])
+    X = _align_features_for_classifier(X, clf)
     # Convert to dense to inspect per-feature contributions
     X_dense = X.toarray()[0]
 
@@ -193,7 +212,11 @@ def _explain_with_linear_weights(
         # If no coef_ attribute, we can't do this explanation
         return []
 
-    coef = clf.coef_[phishing_index]
+    if clf.coef_.shape[0] == 1:
+        # In binary logistic regression, the single row corresponds to the positive class.
+        coef = clf.coef_[0]
+    else:
+        coef = clf.coef_[phishing_index]
 
     # Feature names
     try:
@@ -265,6 +288,7 @@ def explain_email(
 
     # Predict probability
     X = vectorizer.transform([text])
+    X = _align_features_for_classifier(X, clf)
     proba = clf.predict_proba(X)[0]
     phishing_prob = float(proba[phishing_index])
 
