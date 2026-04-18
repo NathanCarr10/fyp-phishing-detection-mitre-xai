@@ -12,9 +12,6 @@ import csv
 import os
 from datetime import datetime, timezone
 
-from mvp_baseline import load_model
-from xai_explainer import explain_email
-
 
 SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = os.path.join(SIM_OUTPUT_DIR, "attacker_simulation_log.csv")
@@ -260,6 +257,7 @@ def run_simulation_for_threshold(
     - legitimate emails with no attack rules
     - XAI explanations for attacker wins
     """
+    from xai_explainer import explain_email
 
     tp = fp = tn = fn = 0
     total_phishing_attacks = 0
@@ -401,6 +399,8 @@ def run_experiments(thresholds=None, num_rounds=5):
     """
     Run simulations across multiple thresholds and print summary metrics.
     """
+    from mvp_baseline import load_model
+
     if thresholds is None:
         thresholds = [0.5, 0.6, 0.7]
 

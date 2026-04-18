@@ -90,6 +90,18 @@ This will:
 - Compute calibration diagnostics (Brier score and ECE)
 - Save outputs to `evaluation_results/`
 
+#### 1c. Evaluate MITRE Mapping Quality (Manually Labeled Validation Set)
+
+```bash
+python src/evaluate_mitre_mapping.py
+```
+
+This will:
+- Evaluate MITRE mapping against a manually labeled subset (`data/processed/mitre_validation_subset.csv`)
+- Report primary-label precision/recall/F1 and accuracy
+- Report multi-label exact-match and micro precision/recall/F1
+- Save outputs to `evaluation_results/`
+
 #### 2. Run the Attacker Simulation
 
 ```bash
@@ -228,6 +240,9 @@ The system supports two explanation methods:
 Simple pattern-based mapping to detect common phishing techniques:
 - **T1566.002 (Phishing: Link)**: Detects URLs in email content
 - **T1566.001 (Phishing: Attachment/Generic)**: Default category
+
+MITRE mapping quality can be measured using the manually labeled validation subset at
+`data/processed/mitre_validation_subset.csv` via `src/evaluate_mitre_mapping.py`.
 
 *Note: Mapping can be extended to cover more MITRE techniques. See ARCHITECTURE.md.*
 
