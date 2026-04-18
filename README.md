@@ -41,6 +41,25 @@ This project implements an **AI-powered email phishing detection system** with i
    # Place CSV files in data/raw/ directory
    ```
 
+### Reproducible One-Command Run
+
+To rerun the full experiment pipeline with fixed reproducibility settings:
+
+```powershell
+.\run_reproducible_pipeline.cmd
+```
+
+Equivalent Python command:
+
+```bash
+python src/reproduce_pipeline.py --seed 42
+```
+
+This executes dataset build, training, simulation, analysis, and visualization in order,
+then writes run metadata to `simulation_results/reproducibility_run_metadata.json`.
+
+For full reproducibility details, see `REPRODUCIBILITY.md`.
+
 ### Running the Project
 
 The training pipeline now prefers a balanced processed dataset at `data/processed/english_dataset_balanced.csv`. The original combined dataset is still kept at `data/processed/english_dataset.csv` for reference.
@@ -153,9 +172,12 @@ fyp-phishing-detection-mitre-xai/
 │   └── conftest.py
 │
 ├── ARCHITECTURE.md                   # System design documentation
+├── REPRODUCIBILITY.md                # Reproducibility protocol and run metadata guidance
 ├── PROJECT_REPORT.md                 # Research report
 ├── requirements.txt                  # Python dependencies
 ├── README.md                         # This file
+├── run_reproducible_pipeline.cmd     # One-command reproducible pipeline launcher
+├── run_reproducible_pipeline.ps1     # PowerShell launcher for reproducible pipeline
 └── .gitignore
 ```
 
