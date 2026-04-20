@@ -105,14 +105,15 @@ def main() -> None:
         1.0 - test_df["phishing_probability"],
     )
 
+    error_map = {
+        (1, 1): "TP",
+        (0, 0): "TN",
+        (0, 1): "FP",
+        (1, 0): "FN",
+    }
+
     def error_type(row: pd.Series) -> str:
-        if row["label"] == 1 and row["pred_label"] == 1:
-            return "TP"
-        if row["label"] == 0 and row["pred_label"] == 0:
-            return "TN"
-        if row["label"] == 0 and row["pred_label"] == 1:
-            return "FP"
-        return "FN"
+        return error_map.get((int(row["label"]), int(row["pred_label"])), "FN")
 
     test_df["error_type"] = test_df.apply(error_type, axis=1)
 

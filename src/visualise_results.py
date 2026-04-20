@@ -46,6 +46,13 @@ def load_csv(path: str) -> pd.DataFrame | None:
     return pd.read_csv(path)
 
 
+def _save_current_figure(output_filename: str) -> None:
+    output_path = os.path.join(FIGURES_DIR, output_filename)
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"Saved: {output_path}")
+
+
 def save_line_plot(
     df: pd.DataFrame,
     x_col: str,
@@ -72,11 +79,7 @@ def save_line_plot(
     plt.grid(True)
     plt.tight_layout()
 
-    output_path = os.path.join(FIGURES_DIR, output_filename)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
-
-    print(f"Saved: {output_path}")
+    _save_current_figure(output_filename)
 
 
 def save_bar_plot(
@@ -119,11 +122,7 @@ def save_bar_plot(
 
     plt.tight_layout()
 
-    output_path = os.path.join(FIGURES_DIR, output_filename)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
-
-    print(f"Saved: {output_path}")
+    _save_current_figure(output_filename)
 
 
 def create_threshold_plots():

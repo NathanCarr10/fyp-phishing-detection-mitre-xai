@@ -11,6 +11,8 @@ import sys
 from typing import Any, Dict, List, Tuple
 
 from mvp_baseline import load_model  # model loader used by the project
+from utils import _align_features_for_classifier
+from utils import get_phishing_class_index
 
 
 # Optional LIME support
@@ -28,23 +30,6 @@ _vectorizer = None
 _clf = None
 
 
-def _align_features_for_classifier(X, clf):
-    """Trim the vectorized features if the classifier expects fewer columns."""
-    expected_features = getattr(clf, "n_features_in_", None)
-    if expected_features is None and hasattr(clf, "coef_"):
-        expected_features = clf.coef_.shape[1]
-
-    if expected_features is None or X.shape[1] == expected_features:
-        return X
-
-    if X.shape[1] > expected_features:
-        return X[:, :expected_features]
-
-    raise ValueError(
-        f"Vectorizer produced {X.shape[1]} features, but classifier expects {expected_features}."
-    )
-
-
 def _get_model():
     """Load the model once and reuse it on later calls."""
     global _vectorizer, _clf
@@ -55,10 +40,7 @@ def _get_model():
 
 def _get_phishing_class_index(clf) -> int:
     """Return the probability column for the phishing class."""
-    if hasattr(clf, "classes_") and 1 in clf.classes_:
-        return list(clf.classes_).index(1)
-    # Fallback: assume the second column is the positive class.
-    return 1
+    return get_phishing_class_index(clf)
 
 
 # LIME explanation

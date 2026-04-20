@@ -43,6 +43,17 @@ def parse_expected_all(expected_all: str) -> set[str]:
     return set(parts)
 
 
+def technique_ids_from_prediction(prediction) -> list[str]:
+    """Normalize a MITRE prediction (str/list/dict) into technique IDs."""
+    if isinstance(prediction, list):
+        return [extract_technique_id(str(item)) for item in prediction]
+
+    if isinstance(prediction, dict) and "primary" in prediction:
+        return [extract_technique_id(str(prediction["primary"]))]
+
+    return [extract_technique_id(str(prediction))]
+
+
 def evaluate_multi_label_micro(rows: list[dict], labels: list[str]) -> tuple[float, float, float]:
     """Compute micro precision, recall, and F1 for the set labels."""
     tp = fp = fn = 0
@@ -77,14 +88,13 @@ def main() -> None:
     for _, item in df.iterrows():
         text = str(item["text"])
 
-        predicted_primary_full = mitre_mapping(text, return_all=False)
-        predicted_primary = extract_technique_id(str(predicted_primary_full))
+        predicted_primary = technique_ids_from_prediction(
+            mitre_mapping(text, return_all=False)
+        )[0]
 
-        predicted_all_full = mitre_mapping(text, return_all=True)
-        if isinstance(predicted_all_full, list):
-            predicted_all = [extract_technique_id(str(v)) for v in predicted_all_full]
-        else:
-            predicted_all = [extract_technique_id(str(predicted_all_full))]
+        predicted_all = technique_ids_from_prediction(
+            mitre_mapping(text, return_all=True)
+        )
 
         expected_primary = str(item["expected_primary"]).strip()
         expected_all_set = parse_expected_all(str(item["expected_all"]))

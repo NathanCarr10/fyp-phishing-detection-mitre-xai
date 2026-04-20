@@ -27,6 +27,13 @@ def _align_features_for_classifier(X, clf):
         f"Vectorizer produced {current_features} features, but classifier expects {expected_features}."
     )
 
+
+def get_phishing_class_index(clf) -> int:
+    """Return the probability column index for phishing class label 1."""
+    if hasattr(clf, "classes_") and 1 in clf.classes_:
+        return list(clf.classes_).index(1)
+    return 1
+
 def classify_email(vectorizer, clf, text: str, threshold: float = 0.5):
     """Classify one email using the given probability threshold."""
     if not isinstance(text, str) or not text.strip():
@@ -36,11 +43,7 @@ def classify_email(vectorizer, clf, text: str, threshold: float = 0.5):
     X = _align_features_for_classifier(X, clf)
     proba = clf.predict_proba(X)[0]
 
-    # Find the index of the phishing class (label=1)
-    if 1 in clf.classes_:
-        phishing_index = list(clf.classes_).index(1)
-    else:
-        phishing_index = 1
+    phishing_index = get_phishing_class_index(clf)
 
     phishing_prob = float(proba[phishing_index])
     pred_label = 1 if phishing_prob >= threshold else 0
@@ -75,16 +78,16 @@ def load_constants() -> dict:
 
 def get_label_name(label: int, label_map: Optional[dict] = None) -> str:
     """Convert a numeric label into a readable name."""
-    if label_map is None:
-        label_map = load_constants()['LABEL_MAP']
-    
-    assert label_map is not None, "label_map should not be None"
-    return label_map.get(label, str(label))
+    resolved_label_map = label_map or load_constants().get(
+        "LABEL_MAP", {0: "legitimate", 1: "phishing"}
+    )
+    return resolved_label_map.get(label, str(label))
 
 
 __all__ = [
     'classify_email',
     'ensure_directory',
+    'get_phishing_class_index',
     'get_project_root',
     'load_constants',
     'get_label_name',
