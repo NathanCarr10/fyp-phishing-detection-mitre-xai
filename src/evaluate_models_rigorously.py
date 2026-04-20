@@ -29,6 +29,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.naive_bayes import MultinomialNB
+from utils import get_phishing_class_index
 
 CURRENT_FILE = Path(__file__).resolve()
 SRC_DIR = CURRENT_FILE.parent
@@ -142,7 +143,7 @@ def evaluate_model_cv(
         model.fit(X_train, y_train)
 
         proba = model.predict_proba(X_test)
-        phishing_idx = list(model.classes_).index(1) if 1 in model.classes_ else 1
+        phishing_idx = get_phishing_class_index(model)
         y_prob = proba[:, phishing_idx]
         y_pred = classify_with_threshold(y_prob, threshold=0.5)
 
