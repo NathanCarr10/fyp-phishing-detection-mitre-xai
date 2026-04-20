@@ -1,6 +1,6 @@
 # Development Guide
 
-This document describes how to develop, test, and maintain the phishing detection project.
+This guide shows you how to set up the project, develop new features, and keep things working properly.
 
 ## Prerequisites
 

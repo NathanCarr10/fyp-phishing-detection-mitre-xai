@@ -1,131 +1,139 @@
 # Project Report: Phishing Detection with MITRE ATT&CK Mapping and Explainable AI
 
-**Author**: Nathan Carr
-**Institution**: Atlantic Technological University, Galway  
-**Degree**: BSc Computing in Software Development  
-**Submission Date**: April 2026  
-**Document Version**: 1.0
+**By**: Nathan Carr  
+**From**: Atlantic Technological University, Galway  
+**Course**: BSc Computing in Software Development  
+**Submitted**: April 2026
 
 ---
 
 ## Executive Summary
 
-This report documents a final-year project implementing an AI-powered phishing email detection system integrated with MITRE ATT&CK threat mapping and explainable AI (XAI) techniques. The system achieves **~95% accuracy** on test data using a Logistic Regression classifier with TF-IDF feature extraction, provides interpretable explanations via LIME and linear model weights, and evaluates robustness through adversarial simulation with multi-rule attack chaining.
+This project builds a phishing email detection system that doesn't just give yes/no answers - it explains *why* it thinks an email is phishing. The system achieves about 95% accuracy using a simple but effective machine learning model, maps detected threats to the industry-standard MITRE ATT&CK framework, and includes tools to test how well it handles attacks.
 
-**Key Contributions:**
-1. End-to-end phishing detection pipeline with model training, evaluation, and deployment
-2. Automatic mapping of detected phishing emails to MITRE ATT&CK framework
-3. Implementation of two XAI explanation methods (LIME and linear weights)
-4. Adversarial simulation engine to test model robustness against attack variants
-5. Interactive Streamlit dashboard for real-world deployment
+**What we built:**
+1. A phishing detection model that works well
+2. Tools to explain what the model is looking at
+3. MITRE ATT&CK mapping for better threat intelligence
+4. Tests to see how the model handles adversarial attacks
+5. A dashboard to use it in practice
+
+### Implementation Progression
+
+We built this project in stages to make sure the code quality was good and everything was tested properly:
+
+1. **Reproducibility**: Made sure we could run everything the same way every time
+2. **Thorough Testing**: Added cross-validation and confidence intervals
+3. **MITRE Validation**: Checked our threat mapping against labeled examples
+4. **Error Analysis**: Extracted and analyzed false positives and false negatives
+5. **Reliability**: Made sure optional features didn't break things
+6. **Automation**: Added CI/CD testing and dependency locking
 
 ---
 
 ## 1. Introduction
 
-### 1.1 Problem Statement
+### 1.1 The Problem
 
-Phishing remains one of the most prevalent cyber threats, with attackers constantly evolving tactics to bypass email security systems. While machine learning models can effectively detect phishing, they often operate as "black boxes," providing high accuracy without explaining their decisions. This lack of interpretability creates challenges for security teams trying to understand model behavior and build trust in automated decisions.
+Phishing emails are a huge security problem. Attackers are constantly coming up with new tricks to bypass filters, and while machine learning models can be really good at catching them, most work like a black box - they just say "that's phishing" without explaining why.
 
-**Research Gap:**
-- Most phishing detection systems prioritize accuracy over interpretability
-- Limited integration with threat intelligence frameworks (e.g., MITRE ATT&CK)
-- Few systems evaluate robustness against adversarial attack mutations
+The challenge is:
+- Security teams can't always trust a model if they don't understand what it's doing
+- There's not much guidance connecting phishing detection to the industry threat framework (MITRE ATT&CK)
+- Most systems don't test how well they handle realistic variations of attacks
 
-### 1.2 Objectives
+### 1.2 What We Built
 
-This project addresses the above gaps by developing:
+This project tackles those problems by creating:
 
-1. A high-accuracy phishing detection model
-2. Automated threat mapping to MITRE ATT&CK techniques
-3. Multiple XAI explanation methods for transparency
-4. Adversarial simulation for robustness testing
-5. An interactive dashboard for practical deployment
+1. A model that's good at detecting phishing
+2. Methods to explain *why* the model thinks something is phishing
+3. Automatic mapping to MITRE ATT&CK so security teams can use the data
+4. Tests to make sure the model holds up against real attacks
+5. A web interface so people can actually use it
 
-### 1.3 Scope
+### 1.3 What We Did (and Didn't)
 
-**Included:**
-- Binary classification (phishing vs. legitimate)
-- Email text analysis (subject + body)
+**In This Project:**
+- Binary classification (phishing or not phishing)
+- Email text analysis (subject line + body)
 - Multi-rule attack simulation
-- Threshold sensitivity analysis
 - MITRE phishing technique mapping
 
-**Out of Scope:**
-- Email metadata analysis (headers, sender reputation)
-- Multi-class classification (type of phishing)
-- Deep learning models (BERT, transformers)
-- Real-time streaming setup
-- Integration with production mail servers
+**Not In Scope:**
+- Analyzing email headers or sender reputation
+- Detecting different types of phishing (just yes/no)
+- Deep learning models (BERT, etc) - kept it simple
+- Real-time integration with email servers
+- Multi-class classification
 
 ---
 
-## 2. Literature Review
+## 2. Background
 
-### 2.1 Phishing Detection Techniques
+### 2.1 How People Detect Phishing
 
-**Machine Learning Approaches:**
-- Naive Bayes: Fast but assumes feature independence
-- Logistic Regression: Interpretable with probabilistic outputs
-- Random Forest/Gradient Boosting: High accuracy but less interpretable
-- Deep Learning (CNN, RNN): State-of-the-art accuracy but computationally expensive
+**Using Machine Learning:**
+- **Naive Bayes**: Simple but assumes all features are independent (they're not)
+- **Logistic Regression**: Interpretable and good for baseline comparisons
+- **Random Forest & Boosting**: High accuracy but hard to explain
+- **Deep Learning (CNN, RNN)**: Best accuracy but expensive and hard to understand
 
-**Feature Engineering:**
-- Lexical features: URL, domain, word patterns
-- Statistical features: Entropy, language models
-- Header analysis: SPF, DKIM, DMARC checks
-- NLP features: TF-IDF, word embeddings
+**Features to Look At:**
+- Text features: URLs, domains, specific word patterns
+- Statistical features: Entropy, language analysis
+- Email headers: SPF, DKIM, DMARC checks
+- Word embeddings: TF-IDF, word2vec, etc
 
-**Our Choice**: Logistic Regression with TF-IDF
-- Balances accuracy and interpretability
-- Suitable for classroom environment (lower computational cost)
-- Strong baseline for text classification
+**We chose Logistic Regression with TF-IDF because:**
+- Got good accuracy with simple, interpretable results
+- Fast enough for a classroom project
+- Strong baseline to compare against
 
-### 2.2 Explainable AI in Cybersecurity
+### 2.2 Explaining Machine Learning Models
 
-**LIME (Ribeiro et al., 2016)**
-- Local, model-agnostic explanations
-- Widely adopted in industry
-- Overcomes "individual prediction" challenge
+**LIME (2016)**
+Local Interpretable Model-Agnostic Explanations - explains one prediction at a time. Works with any model and is widely used in industry.
 
-**SHAP (Lundberg & Lee, 2017)**
-- Theoretical foundation (Shapley values from game theory)
-- Both global and local explanations
-- Computationally expensive for large datasets
+**SHAP (2017)**
+Based on game theory (Shapley values). Can explain individual predictions or the whole model. More theoretically sound but slower to compute.
 
 **Linear Model Interpretability**
-- Direct feature coefficients as importance scores
-- Fast computation
-- Assumes linear separability (unrealistic but interpretable)
+Since we're using Logistic Regression, we can directly look at the coefficients to see which words/features are most important. Super fast and interpretable, though it assumes linear relationships.
+
+**Our approach:** We use LIME when available, but fallback to linear coefficients because they're just as good and much faster.
 
 ### 2.3 MITRE ATT&CK Framework
 
-**Background:**
-- Industry-standard cybersecurity framework
-- Catalogs adversary tactics, techniques, and procedures (TTPs)
-- Enables threat intelligence standardization
+**What is it?**
+A catalog of adversary tactics and techniques based on real-world observations. It's basically the industry standard for talking about cyberattacks.
 
 **Phishing Techniques:**
-- T1566.001: Email attachment phishing
-- T1566.002: Email link phishing
-- T1598.001: Spearphishing attachment
-- T1598.002: Spearphishing link
+- T1566.001: Phishing with attachments
+- T1566.002: Phishing with links
+- T1598.001: Spearphishing via attachments
+- T1598.002: Spearphishing via links
 
-**Integration Value:**
-- Connects detection to threat landscape
-- Enables comparison with other threat reports
-- Supports incident response workflows
+**Why use it?**
+- Lets security teams compare our findings to threat reports
+- Standard language so it integrates with other security tools
+- Helps with incident response planning
 
-### 2.4 Adversarial Robustness in ML
+### 2.4 Testing Models Against Attacks
 
-**Adversarial Examples**: Inputs modified to fool classifiers
-- **In phishing context**: Evasion attacks (modifying emails to bypass detector)
-- **Rule-based vs. gradient-based attacks**: We use rule-based (simpler, more realistic)
+**The Idea:**
+Instead of testing how well the model works on normal data, we can ask: "What if an attacker tries to evade it?" This is called adversarial testing.
 
-**Evaluation Metrics:**
-- Detection rate (% of attacks caught)
-- Bypass rate (% of attacks missed)
-- Confidence margin (spacing in prediction scores)
+**Rule-Based Attacks**
+We use rule-based attacks (simpler, more realistic) instead of gradient-based attacks. Examples:
+- Replace suspicious words with synonyms
+- Add innocent-looking filler text
+- Change sentence structure
+
+**How We Measure:**
+- Detection rate: % of attacks the model caught
+- Bypass rate: % of attacks that got through
+- Confidence margin: How sure the model is about its predictions
 
 ---
 
@@ -173,54 +181,54 @@ This project addresses the above gaps by developing:
 
 ### 3.2 Model Development
 
-#### 3.2.1 Feature Extraction: TF-IDF
+#### Feature Extraction: TF-IDF
 
-**Why TF-IDF?**
-- TF (Term Frequency): More frequent words → higher weight
-- IDF (Inverse Document Frequency): Rare words given more importance
-- Naturally handles text length variations
-- Produces sparse matrices (memory efficient)
+**What It Does:**
+Converts emails into numbers that a machine learning model can understand. TF-IDF gives higher values to:
+- Words that appear frequently in this specific email (Term Frequency)
+- Words that are rare across all emails (Inverse Document Frequency)
 
-**Configuration:**
+This way, common words like "the" or "and" don't dominate, but suspicious phishing keywords get highlighted.
+
+**Our Settings:**
 ```python
 TfidfVectorizer(
-    lowercase=True,        # Normalize case sensitivity
-    stop_words='english',  # Remove: the, and, a, is, etc.
-    max_features=5000,     # Top 5000 features by frequency
-    min_df=1,              # Must appear in ≥1 documents
-    max_df=1.0,            # Can appear in ≤100% of documents
-    ngram_range=(1, 1)     # Unigrams only (no bigrams)
+    lowercase=True,        # Treat "CLICK" and "click" the same
+    stop_words='english',  # Ignore common words (the, and, a, etc)
+    max_features=5000,     # Use the 5000 most common words
 )
 ```
 
-**Design Rationale:**
-- 5000 features: Balance between vocabulary coverage (~98%) and dimensionality reduction
-- Unigrams only: Bigrams add complexity without proportional improvement for phishing detection
-- English stop words: Remove noise from functional words
+**Why These Choices?**
+- Stop words removal removes noise
+- 5000 features captures ~98% of vocabulary without being too sparse
+- Only unigrams (single words) - bigrams don't help much for phishing detection
 
-#### 3.2.2 Classification: Logistic Regression
+#### Classification: Logistic Regression
+
+**What It Does:**
+Looks at word features and learns patterns about which words point to phishing. It outputs a probability from 0 to 1 (0 = definitely legitimate, 1 = definitely phishing).
 
 **Why Logistic Regression?**
-- Probabilistic outputs [0, 1] → suitable for threshold tuning
-- Linear coefficients → directly interpretable
-- Fast training & inference
-- Established baseline for text classification
+- Interpretable: We can see which words it thinks are suspicious
+- Fast: Can classify hundreds of emails per second
+- Probabilistic: Gives confidence scores, not just yes/no
+- Proven: It's a solid baseline for text classification
 
-**Configuration:**
+**Settings:**
 ```python
 LogisticRegression(
-    max_iter=1000,         # Maximum iterations for convergence
-    class_weight='balanced',# Handle class imbalance
-    solver='lbfgs',        # Suitable for small datasets
-    penalty='l2',          # L2 regularization (prevent overfitting)
+    max_iter=1000,          # Let it train until it converges
+    class_weight='balanced',# Handle imbalanced data
 )
 ```
 
-**Training Process:**
-1. Fit TF-IDF vectorizer on training data
-2. Transform training and test data
-3. Train LogReg on TF-IDF vectors
-4. Evaluate on test set
+**Training Steps:**
+1. Convert all emails to TF-IDF features
+2. Feed them to Logistic Regression along with their labels
+3. Model learns which features indicate phishing
+4. Test on emails it's never seen before
+5. Get accuracy and other metrics
 
 ### 3.3 Model Evaluation
 
@@ -240,45 +248,49 @@ LogisticRegression(
 - Recall: 90-98% (don't miss phishing)
 - AUC: 0.95-0.99 (strong discrimination)
 
-### 3.4 Explainability Methods
+**Rigorous Evaluation Extension (Implemented):**
+- Repeated stratified cross-validation is used to reduce single-split variance.
+- 95% confidence intervals are reported from fold-score distributions.
+- Threshold sensitivity for Logistic Regression is exported for decision policy tuning.
+- Calibration quality is measured using Brier score and Expected Calibration Error (ECE).
+
+Output artifacts are saved in `evaluation_results/`.
+
+### 3.4 Explaining Predictions
 
 #### 3.4.1 LIME Explanations
 
-**Algorithm:**
-1. Select target email to explain
-2. Generate K perturbed variations (random word deletions)
-3. Get model predictions for each variation
-4. Fit local linear model: `variation_label ≈ α + Σ(β_i × feature_i)`
-5. Extract feature weights (β_i) → word importance
-6. Return top-N features sorted by |β_i|
+**How It Works:**
+1. Pick an email we want to explain
+2. Make slight changes to it (delete words randomly)
+3. Check how the model's prediction changes
+4. Figure out which words are most important
+5. Show the top words that influenced the decision
 
-**Advantages:**
-- Model-agnostic (works with any classifier)
-- Local explanations (specific to email)
-- Intuitive interpretation
+**Why We Use It:**
+- Works with any model (not just ours)
+- Gives specific explanations for each email
+- Easy to understand: "these words made it look like phishing"
 
-**Implementation:**
-- Uses `lime.lime_text.LimeTextExplainer`
-- Default permutations: 25 (per LIME library)
-- Top features returned: configurable (default 10)
+**Implementation Details:**
+- We use the LIME library
+- By default, about 25 variations per email
+- Typically show the top 10 most influential words
 
-#### 3.4.2 Linear Weights Explanations (Fallback)
+#### 3.4.2 Linear Weights (Backup Method)
 
-**Algorithm:**
-1. Vectorize email using TF-IDF
-2. Extract model coefficients: `coef_[0]` shape (5000,)
-3. Compute contribution: `TF-IDF weight × coefficient`
-4. Sort by absolute contribution
-5. Return top-N features
+**How It Works:**
+Since Logistic Regression is a linear model, we can look at its weights:
+- Positive weights = words that point to phishing
+- Negative weights = words that look legitimate
+- Bigger weights = more important
 
-**Advantages:**
-- No additional computation (uses trained model)
-- Global and consistent
-- Fallback if LIME unavailable
+**Why We Use It:**
+- Super fast (no extra computation needed)
+- Works even if LIME isn't installed
+- Still gives good explanations for the same model
 
-**Implementation:**
-- Requires `sklearn.feature_extraction.text.get_feature_names_out()`
-- Direct coefficient extraction from `clf.coef_`
+If LIME isn't available, we automatically fall back to this method.
 
 ### 3.5 MITRE ATT&CK Mapping
 
@@ -303,6 +315,11 @@ else:
 - Extended patterns for 5+ MITRE techniques
 - Multi-label classification
 - Keyword + pattern matching
+
+**Current Extended Implementation Status:**
+- Pattern/keyword scoring across multiple phishing techniques is implemented.
+- Optional detailed output includes primary mapping, alternatives, per-technique scores, and confidence estimate.
+- Mapping quality is evaluated against a manually labeled subset and reported to `evaluation_results/mitre_mapping_summary.csv`.
 
 ### 3.6 Adversarial Simulation
 

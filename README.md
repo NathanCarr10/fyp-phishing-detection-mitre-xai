@@ -4,16 +4,16 @@
 
 ## Overview
 
-This project implements an **AI-powered email phishing detection system** with integrated **MITRE ATT&CK threat mapping** and **explainable AI (XAI)** explanations. The system classifies emails as legitimate or phishing, maps detected threats to the MITRE ATT&CK framework, and provides interpretable explanations for predictions using LIME and linear model weights.
+This project builds an email phishing detection system that can not only classify emails as legitimate or phishing, but also explain *why* it made that choice. It maps detected threats to the MITRE ATT&CK framework and uses techniques like LIME and linear model weights to give explainable predictions.
 
 ### Key Features
 
-- 🔍 **Phishing Detection**: Binary classification using Logistic Regression with TF-IDF feature extraction
-- 🛡️ **MITRE ATT&CK Mapping**: Automatic mapping of detected phishing techniques to MITRE ATT&CK categories
-- 🤖 **Explainable AI**: LIME-based and linear-weight explanations for model predictions
-- ⚔️ **Adversarial Simulation**: Attacker vs. defender simulation with multi-rule attack chaining
-- 📊 **Comprehensive Analysis**: Threshold analysis, attack effectiveness metrics, and visualization dashboard
-- 🎨 **Interactive UI**: Streamlit-based dashboard for real-time email classification and explanation
+- 🔍 **Phishing Detection**: Classifies emails using Logistic Regression with TF-IDF
+- 🛡️ **MITRE ATT&CK Mapping**: Automatically maps detected phishing techniques to industry threat categories
+- 🤖 **Explainable Results**: Shows you exactly which words/phrases made the model decide it's phishing
+- ⚔️ **Adversarial Testing**: Simulates realistic attacker scenarios and tests model robustness
+- 📊 **Detailed Analysis**: Provides metrics, threshold tuning, and effectiveness analysis
+- 🎨 **Interactive Dashboard**: Streamlit app for classifying emails and viewing explanations in real-time
 
 ## Quick Start
 
@@ -35,8 +35,7 @@ This project implements an **AI-powered email phishing detection system** with i
    pip install -r requirements.txt
    ```
 
-   Dependencies are pinned for reproducibility. Avoid mixing package versions
-   with previously trained model files.
+   The package versions are locked to ensure everything works together properly.
 
 3. **Download and prepare datasets:**
    ```bash
@@ -65,71 +64,60 @@ For full reproducibility details, see `REPRODUCIBILITY.md`.
 
 ### Running the Project
 
-The training pipeline now prefers a balanced processed dataset at `data/processed/english_dataset_balanced.csv`. The original combined dataset is still kept at `data/processed/english_dataset.csv` for reference.
+Here's the basic workflow:
 
-#### 1. Train the Baseline Model
+#### 1. Train the Model
 
 ```bash
 python src/mvp_baseline.py
 ```
 
-This will:
-- Load and preprocess email datasets
-- Train a TF-IDF + Logistic Regression model
-- Save the trained model and vectorizer to `models/`
-- Display evaluation metrics (accuracy, precision, recall, F1, AUC)
-- Generate ROC curve visualization
+This loads all the email datasets, trains the model, and saves it to the `models/` folder. You'll see metrics like accuracy, precision, recall, and F1 score.
+It also generates a ROC curve to show how well the model performs.
 
-#### 1b. Run Rigorous Evaluation (Cross-Validation + CI + Threshold + Calibration)
+#### 1b. Run More Rigorous Testing (Cross-Validation, Confidence Intervals, Calibration)
 
 ```bash
 python src/evaluate_models_rigorously.py
 ```
 
-This will:
-- Run repeated stratified cross-validation for Logistic Regression and Naive Bayes
-- Compute 95% confidence intervals for key metrics
-- Generate threshold sensitivity results for Logistic Regression
-- Compute calibration diagnostics (Brier score and ECE)
-- Save outputs to `evaluation_results/`
+This tests the model more thoroughly by:
+- Running the model on different splits of the data to check consistency
+- Computing confidence intervals so we know how reliable the metrics are
+- Testing different decision thresholds to find the best one for our use case
+- Checking if the model's confidence scores match the actual results
 
-#### 1c. Evaluate MITRE Mapping Quality (Manually Labeled Validation Set)
+#### 1c. Check MITRE Mapping Quality
 
 ```bash
 python src/evaluate_mitre_mapping.py
 ```
 
-This will:
-- Evaluate MITRE mapping against a manually labeled subset (`data/processed/mitre_validation_subset.csv`)
-- Report primary-label precision/recall/F1 and accuracy
-- Report multi-label exact-match and micro precision/recall/F1
-- Save outputs to `evaluation_results/`
+If we had time to label some emails with MITRE techniques, this checks how well our automatic mapping works.
 
-#### 1d. Run Error Analysis Artifacts (Stage 4)
+#### 1d. Analyze Model Errors
 
 ```bash
 python src/run_error_analysis.py
 ```
 
-This will:
-- Recreate the standard holdout test split (seed 42)
-- Save false positives and false negatives for report writing
-- Save hardest false positives/false negatives (highest-confidence mistakes)
-- Save top tokens seen in error cases
-- Save outputs to `evaluation_results/error_analysis/`
+Generates reports on:
+- False positives (legitimate emails marked as phishing)
+- False negatives (phishing emails marked as legitimate)
+- The hardest cases (most confident mistakes)
+- Which words appear most in errors
 
-#### 2. Run the Attacker Simulation
+#### 2. Run Adversarial Attacks
 
 ```bash
 python src/attacker_sim.py
 ```
 
-This will:
-- Simulate attacks using predefined phishing rules
-- Test multi-rule attack chaining
-- Generate simulation logs with results
-- Log XAI explanations for attack successes
-- Output: `simulation_results/attacker_simulation_log.csv`
+Simulates realistic attacks to test model robustness:
+- Creates variations of phishing emails
+- Tests multi-rule attack combinations
+- Records which attacks got through, which got caught
+- Logs explanation details
 
 #### 3. Analyze Simulation Results
 
@@ -155,27 +143,25 @@ This will:
 - Generate MITRE technique effectiveness charts
 - Output: `simulation_results/figures/`
 
-#### 5. Launch Interactive Dashboard
+#### 5. Run the Dashboard
 
 ```bash
 streamlit run src/app.py
 ```
 
-If `streamlit` or `python` is not on your PATH, use the repo launcher instead:
+Or if you're on Windows and Python isn't in PATH:
 
 ```powershell
 .\run_app.cmd
 ```
 
-This will:
-- Start a local web server (http://localhost:8501)
-- Provide interactive interface for:
-  - Pasting email text for classification
-  - Adjusting classification threshold
-  - Viewing phishing probability scores
-  - Inspecting MITRE ATT&CK mappings
-  - Examining XAI explanations
-  - Browsing simulation analysis figures
+This starts a web interface you can use to:
+- Paste in email text to classify it
+- Adjust how strict you want the detector to be
+- See the confidence scores
+- Check what MITRE techniques are involved
+- View explanations of why it classified the email that way
+- Browse the simulation analysis and charts
 
 ## Project Structure
 

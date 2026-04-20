@@ -15,7 +15,7 @@
 
 ## High-Level Overview
 
-The system is organized into three main workflows:
+The system is split into three main parts:
 
 ```
 Training Pipeline               Explanation Pipeline        Simulation Pipeline
@@ -38,105 +38,102 @@ models/ (saved)          Explanations (LIME,        simulation_results/
                           app.py (Streamlit Dashboard)
 ```
 
+In the actual implementation, we also added:
+
+- `evaluate_models_rigorously.py` for testing the model thoroughly with cross-validation and confidence intervals
+- `evaluate_mitre_mapping.py` to check how well our MITRE mapping works against labeled examples
+- `run_error_analysis.py` to find and analyze false positives and false negatives
+- `.github/workflows/ci.yml` to automatically run tests when code is pushed
+
 ---
 
 ## Data Pipeline
 
-### Stage 1: Data Collection
+### Stage 1: Get the Data
 
-**Input Sources:**
-- Multiple CSV files with email data from Kaggle and academic sources
-- Files contain: email text, labels (legitimate/phishing), metadata
+**What we use:**
+- CSV files with emails from Kaggle and academic sources
+- Each file has the email text and a label (legitimate or phishing)
+- All files are in `data/raw/`
 
-**Location:** `data/raw/`
+### Stage 2: Clean the Data (build_dataset.py)
 
-### Stage 2: Preprocessing (build_dataset.py)
+The preprocessing steps are:
 
-```python
+```
 Raw CSV Files
      ↓
-[Column Detection]  → Automatically find text column
+[Find the text column] → Automatically figure out which column has the email
      ↓
-[Label Mapping]     → Assign 0 (legitimate) or 1 (phishing)
+[Assign labels] → Mark as 0 (legitimate) or 1 (phishing)
      ↓
-[Text Cleaning]     → Remove empty/whitespace-only entries
+[Clean up] → Remove empty or whitespace-only entries
      ↓
-[Concatenation]     → Combine multiple sources
+[Combine] → Merge all the datasets together
      ↓
-[Shuffling]         → Randomize row order (seed=42)
+[Shuffle] → Randomize the order (using seed=42 for consistency)
      ↓
-english_dataset.csv (data/processed/)
+english_dataset.csv (saved in data/processed/)
 ```
 
 **Output:** `data/processed/english_dataset.csv`
 
-**Columns:**
-- `text`: Email text content
-- `label`: 0 (legitimate) or 1 (phishing)
+**What's in it:**
+- `text`: The email content
+- `label`: 0 for legitimate, 1 for phishing
 
-### Stage 3: Train/Test Split
+### Stage 3: Split Into Train and Test
 
 ```
 english_dataset.csv
         ↓
-[Stratified Split] → train: 80%, test: 20% (random_state=42)
+[Split 80/20] → 80% for training, 20% for testing (seed=42)
         ↓
     Training Data        Test Data
 ```
 
-**Why stratified?**: Maintains class distribution in both splits (prevents skew)
+**Why stratified split?** It keeps roughly the same mix of phishing vs legitimate in both train and test sets.
 
 ---
 
 ## Model Components
 
-### 1. Feature Extraction: TF-IDF Vectorization
+### 1. Feature Extraction: TF-IDF
 
-**Module:** `sklearn.feature_extraction.text.TfidfVectorizer`
+**What it does:**
+Converts email text into numbers that the model can understand. TF-IDF gives higher weight to words that are:
+- Frequent in the email (Term Frequency)
+- Rare across all emails (Inverse Document Frequency)
 
-**Configuration:**
+This way, common words like "the" don't mess up the detection, but important phishing indicators get noticed.
+
+**Settings:**
 ```python
 TfidfVectorizer(
-    lowercase=True,           # Normalize to lowercase
-    stop_words='english',     # Remove common English words
-    max_features=5000,        # Top 5000 most frequent features
-    # Implicit parameters:
-    # - min_df=1 (appear in at least 1 doc)
-    # - max_df=1.0 (appear in at most 100% of docs)
-    # - ngram_range=(1, 1) (unigrams only, no bigrams)
+    lowercase=True,           # Treat "CLICK" and "click" the same
+    stop_words='english',     # Ignore common words (the, and, is, etc)
+    max_features=5000,        # Use the 5000 most common words
 )
 ```
-
-**Output:** Sparse matrix of shape (n_samples, 5000)
-
-**Rationale:**
-- Stop words removal reduces noise from common prepositions, articles
-- 5000 features balances coverage vs. sparsity
-- TF-IDF naturally downweights very frequent terms and upweights discriminative terms
 
 ### 2. Classification: Logistic Regression
 
-**Module:** `sklearn.linear_model.LogisticRegression`
+**What it does:**
+A simple but powerful model that learns patterns from the TF-IDF features and gives a probability score (0 to 1) for whether an email is phishing.
 
-**Configuration:**
+**Why this model?**
+- It's interpretable - we can see which words the model thinks are suspicious
+- It's fast - can classify hundreds of emails per second
+- It gives us probability scores - we can adjust how strict we want to be
+- It's a solid baseline that works well for text classification
+
+**Settings:**
 ```python
 LogisticRegression(
-    max_iter=1000,           # Maximum iterations for convergence
-    class_weight='balanced', # Handle class imbalance (not needed with balancing)
-    # Implicit parameters:
-    # - solver='lbfgs' (suitable for small datasets)
-    # - C=1.0 (inverse regularization strength)
-    # - penalty='l2' (L2 regularization)
+    max_iter=1000,           # Let it train until it converges
+    class_weight='balanced', # Handle imbalanced data
 )
 ```
-
-**Why Logistic Regression?**
-- Probabilistic outputs (good for threshold tuning)
-- Linear coefficients directly interpretable (good for XAI)
-- Fast training and inference
-- Good baseline for phishing detection
-
-**Output:** Probability scores [0, 1] for each class
 
 ---
 
@@ -225,21 +222,20 @@ else:
 **Location:** `src/attacker_sim.py` → `mitre_mapping()`
 
 **Current Logic:**
-```python
-def mitre_mapping(email_text: str) -> str:
-    text_lower = email_text.lower()
-    
-    if any URL pattern in text:
-        return "T1566.002 - Phishing: Link"
-    else:
-        return "T1566.001 - Phishing: Attachment/Generic"
-```
+- Technique candidates are scored using pattern matches and keyword matches.
+- Default mode returns a single best match.
+- Multi-label mode returns all matches sorted by score.
+- Detail mode (`return_details=True`) returns:
+    - primary technique
+    - alternative techniques
+    - per-technique scores
+    - confidence value derived from score concentration
 
 **Coverage:**
 - **T1566.002 (Phishing: Link)**: URLs detected via http://, https://, www., "click here"
 - **T1566.001 (Phishing: Attachment/Generic)**: Fallback for any non-URL phishing
 
-### Enhanced Mapping (Recommended)
+### Enhanced Mapping (Implemented)
 
 **Proposed Extension Pattern:**
 
@@ -292,6 +288,43 @@ def mitre_mapping_enhanced(email_text: str) -> List[str]:
 - Multi-label mapping (one email can match multiple techniques)
 - Pattern-based and keyword-based matching
 - Documented mapping rationale
+
+### MITRE Mapping Validation Architecture
+
+**Location:** `src/evaluate_mitre_mapping.py`
+
+Validation flow:
+
+1. Load manually labeled validation subset (`data/processed/mitre_validation_subset.csv`)
+2. Compute primary-label predictions and multi-label predictions
+3. Report:
+    - primary accuracy
+    - macro precision/recall/F1
+    - multi-label exact-match
+    - micro precision/recall/F1
+4. Persist outputs to `evaluation_results/mitre_mapping_predictions.csv` and `evaluation_results/mitre_mapping_summary.csv`
+
+This creates an empirical quality checkpoint for the mapping subsystem.
+
+---
+
+## Quality Engineering Layer
+
+### Reproducibility Controls
+
+- One-command pipeline execution (`src/reproduce_pipeline.py`)
+- Seeded execution and metadata capture (`simulation_results/reproducibility_run_metadata.json`)
+- Pinned dependency versions in `requirements.txt`
+
+### Runtime Compatibility Guard
+
+Model loading paths now compare runtime scikit-learn version to model training version metadata and emit warnings when they differ.
+
+### Continuous Integration
+
+- Workflow: `.github/workflows/ci.yml`
+- Action: install dependencies and run `pytest -q`
+- Objective: prevent regression drift and keep the test baseline enforceable
 
 ---
 
