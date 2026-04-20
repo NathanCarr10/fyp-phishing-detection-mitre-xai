@@ -37089,25 +37089,25 @@
 /***/ })
 /******/ ]);
 //# sourceMappingURL=bundle.js.map </script></head><body>
-        <div class="lime top_div" id="top_divE4XCW7QH3K985DM"></div>
+        <div class="lime top_div" id="top_divJNY6O2XHGLDCZ4E"></div>
         
         <script>
-        var top_div = d3.select('#top_divE4XCW7QH3K985DM').classed('lime top_div', true);
+        var top_div = d3.select('#top_divJNY6O2XHGLDCZ4E').classed('lime top_div', true);
         
             var pp_div = top_div.append('div')
                                 .classed('lime predict_proba', true);
             var pp_svg = pp_div.append('svg').style('width', '100%');
-            var pp = new lime.PredictProba(pp_svg, ["legit", "phishing"], [0.09561457924823602, 0.904385420751764]);
+            var pp = new lime.PredictProba(pp_svg, ["legit", "phishing"], [0.09278063010349424, 0.9072193698965058]);
             
         
         var exp_div;
             var exp = new lime.Explanation(["legit", "phishing"]);
         
                 exp_div = top_div.append('div').classed('lime explanation', true);
-                exp.show([["wrote", 0.09149298960456048], ["2002", 0.0914189848662273], ["beberg", 0.05388516575949563], ["Sep", 0.053492180730834483], ["Java", 0.045949224650834064], ["management", -0.033299590316195206], ["Beberg", 0.030736831698401697], ["memory", 0.029834140741196988], ["90", -0.015783798645673804], ["takes", -0.010893046858212812]], 1, exp_div);
+                exp.show([["2002", 0.087452649800693], ["wrote", 0.0865211338630797], ["beberg", 0.04902763465861547], ["Sep", 0.046704090854680184], ["Java", 0.04275788637303546], ["management", -0.03434218831072574], ["Beberg", 0.028644671844183855], ["http", 0.026777767709415968], ["memory", 0.025615858458891902], ["90", -0.01612380096440548]], 1, exp_div);
                 
         var raw_div = top_div.append('div');
-            exp.show_raw_text([["wrote", 40, 0.09149298960456048], ["2002", 14, 0.0914189848662273], ["beberg", 1005, 0.05388516575949563], ["beberg", 1015, 0.05388516575949563], ["Sep", 10, 0.053492180730834483], ["Java", 874, 0.045949224650834064], ["Java", 922, 0.045949224650834064], ["management", 355, -0.033299590316195206], ["management", 440, -0.033299590316195206], ["management", 696, -0.033299590316195206], ["Beberg", 972, 0.030736831698401697], ["memory", 186, 0.029834140741196988], ["memory", 346, 0.029834140741196988], ["memory", 433, 0.029834140741196988], ["memory", 505, 0.029834140741196988], ["90", 882, -0.015783798645673804], ["takes", 800, -0.010893046858212812]], 1, "On Mon, 2 Sep 2002, Reza B'Far (eBuilt) wrote:\n\n| Hmmm again.... You're telling me that you've never had a nasty bug that took\n| you a couple of days to track down that had to do with a memory leak?  I am\n| not the best C/C++ programmer... not even close... But I've known really\n| good ones... and even they have nasty bugs that have to do with memory\n| management, however occasional they may be.\n\nOK, noone has been tool-less for memory management for a LONG time. Most\nsystems you just add a flag and memory is tracked (that's how i've always\ndone it) or worst case yuo have to run it through one of the 2.3E7 tools\nwhere you simply recompile and it it tells you where the leaks are.\n\nMemory management is a non-issue for anyone that has any idea at all how the\nhardware functions. Granted, this takes 30 minutes to go over, and so is far\nbeyond the scope of the \"Learn Java in 90 minutes without thinking\" book\nevery Java programmer learned from.\n\n- Adam L. \"Duncan\" Beberg\n  http://www.mithral.com/~beberg/\n  beberg@mithral.com", raw_div, true);
+            exp.show_raw_text([["2002", 14, 0.087452649800693], ["wrote", 40, 0.0865211338630797], ["beberg", 1005, 0.04902763465861547], ["beberg", 1015, 0.04902763465861547], ["Sep", 10, 0.046704090854680184], ["Java", 874, 0.04275788637303546], ["Java", 922, 0.04275788637303546], ["management", 355, -0.03434218831072574], ["management", 440, -0.03434218831072574], ["management", 696, -0.03434218831072574], ["Beberg", 972, 0.028644671844183855], ["http", 981, 0.026777767709415968], ["memory", 186, 0.025615858458891902], ["memory", 346, 0.025615858458891902], ["memory", 433, 0.025615858458891902], ["memory", 505, 0.025615858458891902], ["90", 882, -0.01612380096440548]], 1, "On Mon, 2 Sep 2002, Reza B'Far (eBuilt) wrote:\n\n| Hmmm again.... You're telling me that you've never had a nasty bug that took\n| you a couple of days to track down that had to do with a memory leak?  I am\n| not the best C/C++ programmer... not even close... But I've known really\n| good ones... and even they have nasty bugs that have to do with memory\n| management, however occasional they may be.\n\nOK, noone has been tool-less for memory management for a LONG time. Most\nsystems you just add a flag and memory is tracked (that's how i've always\ndone it) or worst case yuo have to run it through one of the 2.3E7 tools\nwhere you simply recompile and it it tells you where the leaks are.\n\nMemory management is a non-issue for anyone that has any idea at all how the\nhardware functions. Granted, this takes 30 minutes to go over, and so is far\nbeyond the scope of the \"Learn Java in 90 minutes without thinking\" book\nevery Java programmer learned from.\n\n- Adam L. \"Duncan\" Beberg\n  http://www.mithral.com/~beberg/\n  beberg@mithral.com", raw_div, true);
             
         </script>
         </body></html>
