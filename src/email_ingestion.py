@@ -49,6 +49,18 @@ def _html_to_text(html_body: str) -> str:
     return text.strip()
 
 
+def _decode_part_payload(part, payload: bytes | None, charset: str) -> str:
+    """Decode one MIME part payload into text with safe fallbacks."""
+    if payload is None:
+        part_text = part.get_payload()
+        return part_text if isinstance(part_text, str) else ""
+
+    try:
+        return payload.decode(charset, errors="replace")
+    except LookupError:
+        return payload.decode("utf-8", errors="replace")
+
+
 def _extract_plain_body(msg) -> str:
     """Extract plain-text body, or fallback to HTML-to-text conversion."""
     plain_parts: List[str] = []
@@ -68,18 +80,7 @@ def _extract_plain_body(msg) -> str:
         payload = part.get_payload(decode=True)
         charset = part.get_content_charset() or "utf-8"
 
-        if payload is None:
-            # Fallback for unusual messages where payload is already text.
-            part_text = part.get_payload()
-            if isinstance(part_text, str):
-                text = part_text
-            else:
-                text = ""
-        else:
-            try:
-                text = payload.decode(charset, errors="replace")
-            except LookupError:
-                text = payload.decode("utf-8", errors="replace")
+        text = _decode_part_payload(part, payload, charset)
 
         if not text.strip():
             continue
