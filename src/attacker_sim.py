@@ -51,6 +51,19 @@ MITRE_PATTERNS = {
     },
 }
 
+FALLBACK_TECHNIQUE = "T1566.001 - Phishing: Attachment/Generic"
+
+
+def _fallback_mitre_result(return_details: bool):
+    if return_details:
+        return {
+            "primary": FALLBACK_TECHNIQUE,
+            "alternatives": [FALLBACK_TECHNIQUE],
+            "scores": {},
+            "confidence": 0.0,
+        }
+    return FALLBACK_TECHNIQUE
+
 
 def mitre_mapping(email_text: str, return_all: bool = False, return_details: bool = False):
     """Match an email against the MITRE phishing technique rules."""
@@ -77,58 +90,37 @@ def mitre_mapping(email_text: str, return_all: bool = False, return_details: boo
             technique_scores[tech_id] = score
             matched_techniques.append((tech_id, score))
 
-    # Return results
-    if return_all:
-        # Return all matches sorted by score
-        matched_techniques.sort(key=lambda x: x[1], reverse=True)
-        if return_details:
-            total_score = sum(score for _, score in matched_techniques) or 1
-            primary_score = matched_techniques[0][1] if matched_techniques else 0
-            confidence = float(primary_score / total_score)
-            return {
-                "primary": (
-                    f"{matched_techniques[0][0]} - {MITRE_PATTERNS[matched_techniques[0][0]]['name']}"
-                    if matched_techniques
-                    else "T1566.001 - Phishing: Attachment/Generic"
-                ),
-                "alternatives": [
-                    f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}" for tech_id, _ in matched_techniques
-                ] or ["T1566.001 - Phishing: Attachment/Generic"],
-                "scores": {tech_id: score for tech_id, score in matched_techniques},
-                "confidence": confidence,
+    if not matched_techniques:
+        if return_all:
+            return [FALLBACK_TECHNIQUE] if not return_details else {
+                "primary": FALLBACK_TECHNIQUE,
+                "alternatives": [FALLBACK_TECHNIQUE],
+                "scores": {},
+                "confidence": 0.0,
             }
-        if matched_techniques:
-            return [f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}"
-                   for tech_id, _ in matched_techniques]
-        else:
-            return ["T1566.001 - Phishing: Attachment/Generic"]  # Fallback
-    else:
-        # Return single best match
-        if matched_techniques:
-            matched_techniques.sort(key=lambda x: x[1], reverse=True)
-            best_match = max(matched_techniques, key=lambda x: x[1])[0]
-            if return_details:
-                total_score = sum(score for _, score in matched_techniques) or 1
-                primary_score = matched_techniques[0][1]
-                confidence = float(primary_score / total_score)
-                return {
-                    "primary": f"{best_match} - {MITRE_PATTERNS[best_match]['name']}",
-                    "alternatives": [
-                        f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}" for tech_id, _ in matched_techniques
-                    ],
-                    "scores": {tech_id: score for tech_id, score in matched_techniques},
-                    "confidence": confidence,
-                }
-            return f"{best_match} - {MITRE_PATTERNS[best_match]['name']}"
-        else:
-            if return_details:
-                return {
-                    "primary": "T1566.001 - Phishing: Attachment/Generic",
-                    "alternatives": ["T1566.001 - Phishing: Attachment/Generic"],
-                    "scores": {},
-                    "confidence": 0.0,
-                }
-            return "T1566.001 - Phishing: Attachment/Generic"  # Fallback
+        return _fallback_mitre_result(return_details)
+
+    matched_techniques.sort(key=lambda x: x[1], reverse=True)
+    alternatives = [
+        f"{tech_id} - {MITRE_PATTERNS[tech_id]['name']}"
+        for tech_id, _ in matched_techniques
+    ]
+
+    if return_details:
+        total_score = sum(score for _, score in matched_techniques) or 1
+        primary_tech_id, primary_score = matched_techniques[0]
+        confidence = float(primary_score / total_score)
+        return {
+            "primary": f"{primary_tech_id} - {MITRE_PATTERNS[primary_tech_id]['name']}",
+            "alternatives": alternatives,
+            "scores": {tech_id: score for tech_id, score in matched_techniques},
+            "confidence": confidence,
+        }
+
+    if return_all:
+        return alternatives
+
+    return alternatives[0]
 
 
 # ---------------- Attacker Rules ---------------- #
