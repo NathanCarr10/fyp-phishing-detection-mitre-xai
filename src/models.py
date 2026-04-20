@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, roc_curve
 import numpy as np
+from utils import get_phishing_class_index
 
 
 # Label names for pretty printing
@@ -55,10 +56,7 @@ def evaluate_classifier(classifier, X_test_tfidf, y_test, model_name="Model"):
     auc_score = None
     if hasattr(classifier, "predict_proba"):
         proba = classifier.predict_proba(X_test_tfidf)
-        if 1 in classifier.classes_:
-            phishing_idx = list(classifier.classes_).index(1)
-        else:
-            phishing_idx = 1
+        phishing_idx = get_phishing_class_index(classifier)
         y_score = proba[:, phishing_idx]
         auc_score = roc_auc_score(y_test, y_score)
         print(f"ROC AUC Score: {auc_score:.4f}")
