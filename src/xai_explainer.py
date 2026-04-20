@@ -1,11 +1,11 @@
 # src/xai_explainer.py
 #
-# XAI explainer module for the phishing detection model.
+# Explains why the model predicted phishing or legitimate.
 #
-# - Loads the saved TF-IDF vectorizer and classifier from mvp_baseline.py
-# - Provides a high-level explain_email(...) function
-# - Tries to use LIME for text explanations if available
-# - Falls back to a simple linear-weight explanation if LIME is not installed
+# - Loads the saved TF-IDF vectorizer and classifier
+# - Exposes a main explain_email(...) function
+# - Uses LIME when available
+# - Falls back to a simple linear-weight explanation when LIME is missing
 #
 # Usage (CLI):
 #   python src/xai_explainer.py

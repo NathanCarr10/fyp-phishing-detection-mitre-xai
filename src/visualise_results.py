@@ -1,6 +1,6 @@
 # src/visualise_results.py
 #
-# Generate visualisations from attacker simulation analysis outputs.
+# Builds the charts used to present simulation results.
 #
 # Inputs:
 #   simulation_results/analysis/summary_by_threshold.csv
@@ -14,11 +14,6 @@
 #   simulation_results/figures/attack_type_detection_rate.png
 #   simulation_results/figures/rule_chain_detection_rate.png
 #   simulation_results/figures/mitre_detection_rate.png
-#
-# Notes:
-# - Uses matplotlib only
-# - One chart per figure
-# - No custom colours/styles to keep plots simple and clean
 
 import os
 import pandas as pd

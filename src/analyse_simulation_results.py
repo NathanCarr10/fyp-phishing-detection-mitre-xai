@@ -1,6 +1,6 @@
 # src/analyse_simulation_results.py
 #
-# Analyse attacker simulation logs and generate summary CSV files.
+# Reads the attacker simulation log and creates summary tables.
 #
 # Input:
 #   simulation_results/attacker_simulation_log.csv
@@ -11,10 +11,7 @@
 #   simulation_results/analysis/summary_by_rule_chain.csv
 #   simulation_results/analysis/summary_by_mitre.csv
 #
-# This script:
-# - Loads the simulation log CSV
-# - Computes confusion matrix metrics for grouped subsets
-# - Produces clean summary tables for dissertation analysis
+# I use these outputs for writing up and plotting final results.
 
 import os
 import pandas as pd

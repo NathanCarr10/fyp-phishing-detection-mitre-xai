@@ -1,22 +1,18 @@
 # src/app.py
 #
-# Streamlit demo app for phishing detection + MITRE mapping + XAI explanation.
+# Main Streamlit app for my phishing detection project.
 #
-# Features:
-# - Paste email text into a text area
-# - Classify as phishing or legitimate
-# - Show phishing probability with confidence visualization
-# - Show MITRE ATT&CK mapping with attack technique details
-# - Show top XAI features with explanations of their relevance
-# - Display generated analysis figures from simulation results
-# - Customizable threshold and feature counts
-# - Email input validation and helpful error messages
-# - Example emails for quick testing
+# What this app does:
+# - lets you paste email text (or load a .eml file)
+# - predicts phishing vs legitimate
+# - shows phishing probability and confidence styling
+# - shows MITRE technique mapping
+# - shows top explanation features for the prediction
+# - displays saved simulation charts
 #
 # Run from project root:
 #   streamlit run src/app.py
-
-# To run app use .\run_app.ps1 in powershell
+#   or use .\run_app.ps1 in PowerShell
 
 import sys
 from pathlib import Path

@@ -1,12 +1,10 @@
 # src/attacker_sim.py
 #
-# Attacker vs Defender simulation with:
-# - Legit + phishing emails
-# - Single-rule and multi-rule attack chaining
-# - Full confusion matrix metrics
-# - Threshold testing
-# - MITRE mapping
-# - XAI explanations logged for attacker wins (false negatives)
+# Simulates attacker tricks against the phishing detector.
+#
+# It runs both simple and chained attack rules, checks model output,
+# logs confusion-matrix style outcomes, and stores MITRE/XAI details
+# for cases where phishing slips through.
 
 import csv
 import os

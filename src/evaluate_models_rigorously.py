@@ -1,12 +1,11 @@
 """
-Rigorous evaluation for phishing detection models.
+Runs a stronger evaluation pass for the phishing models.
 
-This script adds stronger academic evaluation beyond a single train/test split by using:
-- Repeated Stratified K-Fold cross-validation
-- Confidence intervals from fold score distributions
-- Threshold sensitivity analysis
-- Data-driven threshold recommendation
-- Calibration checks (Brier score + ECE)
+Instead of just one train/test split, this script adds:
+- repeated stratified cross-validation
+- confidence intervals
+- threshold sensitivity checks
+- calibration checks (Brier score + ECE)
 
 Run:
     python src/evaluate_models_rigorously.py

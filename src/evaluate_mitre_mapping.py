@@ -1,5 +1,5 @@
 """
-Evaluate MITRE ATT&CK mapping quality using a manually labeled validation subset.
+Checks how well my MITRE mapping works on a manually labelled subset.
 
 Validation dataset:
     data/processed/mitre_validation_subset.csv

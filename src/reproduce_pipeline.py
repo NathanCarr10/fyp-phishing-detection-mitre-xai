@@ -1,5 +1,5 @@
 """
-Run the full experiment pipeline in a single command with reproducibility metadata.
+Runs the full project pipeline in one command.
 
 Stages:
 1. Build processed datasets
@@ -7,6 +7,8 @@ Stages:
 3. Run attacker simulation
 4. Analyse simulation output
 5. Generate result figures
+
+It also saves reproducibility metadata for write-up and reruns.
 
 Usage:
     python src/reproduce_pipeline.py

@@ -1,7 +1,7 @@
 """
-Shared utility functions for phishing detection system.
+Shared helper functions used across the phishing detection project.
 
-This module contains common functions used across multiple modules to avoid code duplication.
+I keep reusable logic here so the app and scripts stay clean.
 """
 
 import os

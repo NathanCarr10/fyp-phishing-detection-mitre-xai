@@ -1,12 +1,11 @@
-#
 # models.py
 #
-# Model definitions and utilities for phishing detection.
-# Supports multiple classifier algorithms for comparison.
+# Small helper module for creating, training, and evaluating
+# the baseline classifiers used in this project.
 #
 # Current models:
-#  - Logistic Regression with TF-IDF
-#  - Multinomial Naive Bayes with TF-IDF
+# - Logistic Regression + TF-IDF
+# - Multinomial Naive Bayes + TF-IDF
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB

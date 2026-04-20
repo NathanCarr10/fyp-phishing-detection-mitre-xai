@@ -1,9 +1,9 @@
 """
-Safe .eml ingestion helpers for the phishing detection Streamlit app.
+Helpers for reading .eml files inside the Streamlit app.
 
-This module parses local .eml files using Python's standard email package,
-extracts safe metadata/content fields, and reuses existing project functions
-for prediction, MITRE mapping, and XAI explanations.
+This module safely parses local email files, extracts useful fields,
+and passes the text to the existing prediction, MITRE mapping,
+and explanation functions used in the project.
 """
 
 from __future__ import annotations

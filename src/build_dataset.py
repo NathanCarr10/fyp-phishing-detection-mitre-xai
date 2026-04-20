@@ -1,8 +1,8 @@
 # src/build_dataset.py
 #
-# Builds a smaller, easier-to-explain dataset:
-# - Enron = legit (0)
-# - Spam/Phishing sources = phishing (1)
+# Builds the cleaned dataset used in this project.
+# - Enron emails are treated as legitimate (0)
+# - Spam/phishing sources are treated as phishing (1)
 # Saves: data/processed/english_dataset.csv with columns: text, label
 
 import os

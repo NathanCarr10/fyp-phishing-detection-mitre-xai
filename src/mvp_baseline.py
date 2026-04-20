@@ -1,3 +1,10 @@
+"""
+Baseline training script for the phishing detector.
+
+This script trains TF-IDF based Logistic Regression and Naive Bayes models,
+saves the model files, and provides utility functions used by the app and XAI code.
+"""
+
 import os
 import warnings
 import numpy as np
@@ -13,15 +20,17 @@ import matplotlib.pyplot as plt
 import joblib
 
 try:
-    from lime.lime_text import LimeTextExplainer
+    from lime.lime_text import LimeTextExplainer  # type: ignore[import-not-found]
     _LIME_AVAILABLE = True
 except ImportError:
+    LimeTextExplainer = None
     _LIME_AVAILABLE = False
 
 try:
-    import shap
+    import shap  # type: ignore[import-not-found]
     _SHAP_AVAILABLE = True
 except ImportError:
+    shap = None
     _SHAP_AVAILABLE = False
 
 # Paths and column names
@@ -54,7 +63,7 @@ def get_model_compatibility_warning(vectorizer, clf):
         _extract_training_sklearn_version(vectorizer),
         _extract_training_sklearn_version(clf),
     }
-    trained_versions.discard(None)
+    trained_versions = {version for version in trained_versions if version is not None}
 
     if not trained_versions:
         return None
@@ -210,6 +219,8 @@ def explain_with_lime(clf, vectorizer, text_sample):
         print("\nLIME not installed. Skipping LIME explanation.")
         return
 
+    from lime.lime_text import LimeTextExplainer  # type: ignore[import-not-found]
+
     def predict_proba(text_list):
         X = vectorizer.transform(text_list)
         return clf.predict_proba(X)
@@ -250,6 +261,8 @@ def build_shap_explainer(clf, X_train_tfidf, background_size=2000):
     """Create a SHAP explainer using a small background sample."""
     if not _SHAP_AVAILABLE:
         raise RuntimeError("SHAP not installed. Cannot build SHAP explainer.")
+
+    import shap  # type: ignore[import-not-found]
 
     print("\nBuilding SHAP explainer (using a small background sample)...")
     X_bg, _ = sample_rows(X_train_tfidf, n=background_size, seed=42)

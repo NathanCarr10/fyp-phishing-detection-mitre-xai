@@ -1,12 +1,11 @@
-#
 # compare_models.py
 #
-# Compare performance of Logistic Regression and Multinomial Naive Bayes
-# on phishing detection task. Useful for understanding model strengths/weaknesses.
+# Quick side-by-side model comparison for this project.
+# It compares Logistic Regression and Multinomial Naive Bayes
+# so I can justify the final model choice with clear metrics.
 #
 # Run:
 #   python src/compare_models.py
-#
 
 import os
 import sys

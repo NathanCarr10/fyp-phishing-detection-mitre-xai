@@ -1,8 +1,8 @@
 """
-Stage 4: Error analysis artifacts for the phishing detection model.
+Generates error-analysis outputs for the phishing detector.
 
-This script evaluates the saved Logistic Regression model on the standard
-holdout split and writes report-ready error analysis outputs.
+This script evaluates the saved Logistic Regression model on the holdout split
+and writes CSV files that are used in the report discussion.
 
 Run:
     python src/run_error_analysis.py
