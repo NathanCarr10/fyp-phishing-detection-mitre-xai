@@ -26,6 +26,7 @@ from sklearn.metrics import (
     classification_report,
 )
 import joblib
+from utils import get_phishing_class_index
 
 # Ensure src/ is importable
 CURRENT_FILE = Path(__file__).resolve()
@@ -129,10 +130,7 @@ def evaluate_model(clf, X_test_tfidf, y_test, model_name):
     
     # Probabilities (for AUC)
     y_proba = clf.predict_proba(X_test_tfidf)
-    if 1 in clf.classes_:
-        phishing_idx = list(clf.classes_).index(1)
-    else:
-        phishing_idx = 1
+    phishing_idx = get_phishing_class_index(clf)
     y_score = y_proba[:, phishing_idx]
     
     # Metrics
