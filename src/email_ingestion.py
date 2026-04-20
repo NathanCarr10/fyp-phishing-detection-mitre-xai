@@ -188,6 +188,7 @@ def analyze_combined_text(
     threshold: float = 0.5,
     num_features: int = 10,
     use_lime: bool = True,
+    use_shap: bool = False,
     vectorizer=None,
     clf=None,
 ) -> Dict[str, Any]:
@@ -210,6 +211,7 @@ def analyze_combined_text(
             num_features=num_features,
             threshold=threshold,
             use_lime=use_lime,
+            use_shap=use_shap,
         )
     except Exception as exc:
         xai_explanation = {

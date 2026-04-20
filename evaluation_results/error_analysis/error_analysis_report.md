@@ -3,8 +3,8 @@
 - Test samples: 4281
 - Total errors: 267
 - Error rate: 0.0624
-- False positives: 140
-- False negatives: 127
+- False positives: 139
+- False negatives: 128
 
 ## Output Files
 - error_summary.csv

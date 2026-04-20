@@ -222,6 +222,12 @@ use_lime = st.sidebar.checkbox(
     help="LIME provides local interpretable explanations. Falls back to linear weights if unavailable.",
 )
 
+use_shap = st.sidebar.checkbox(
+    "Use SHAP for Explanations (Experimental)",
+    value=False,
+    help="Uses SHAP values with the linear model. If SHAP is unavailable, the app falls back to linear weights.",
+)
+
 show_figures = st.sidebar.checkbox(
     "Show Simulation Figures",
     value=True,
@@ -244,7 +250,7 @@ with st.sidebar.expander("How does this work?", expanded=False):
     - **Multinomial Naive Bayes**: Probabilistic classifier, often effective for text
     - Features: TF-IDF (Term Frequency-Inverse Document Frequency)
     - Training Data: 1,000+ phishing & legitimate emails
-    - XAI Method: LIME (Local Interpretable Model-agnostic Explanations)
+    - XAI Methods: SHAP (experimental), LIME, or linear fallback
     
     **Pro Tip:** Compare both models to see how different algorithms handle the same email!
     """)
@@ -454,6 +460,7 @@ if analyse_clicked:
                 threshold=threshold,
                 num_features=num_features,
                 use_lime=use_lime,
+                use_shap=use_shap,
                 vectorizer=vectorizer,
                 clf=clf,
             )
