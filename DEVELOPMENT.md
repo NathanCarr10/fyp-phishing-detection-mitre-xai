@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide shows you how to set up the project, develop new features, and keep things working properly.
+This guide explains how to set up, run, and extend the project while keeping results consistent.
 
 ## Prerequisites
 
@@ -13,4 +13,184 @@ This guide shows you how to set up the project, develop new features, and keep t
 
 ### 1. Clone Repository
 
-```bash\ngit clone <repository-url>\ncd fyp-phishing-detection-mitre-xai\n```\n\n### 2. Create Virtual Environment\n\n```bash\n# Using venv\npython -m venv venv\nsource venv/bin/activate  # On Windows: venv\\Scripts\\activate\n\n# Or using conda\nconda create -n phishing-detection python=3.9\nconda activate phishing-detection\n```\n\n### 3. Install Dependencies\n\n```bash\npip install -r requirements.txt\n\n# For development (includes pytest, additional tools)\npip install -r requirements.txt pytest pytest-cov black flake8 mypy\n```\n\n## Project Workflow\n\n### 1. Data Preparation\n\n```bash\n# Download datasets (see data/README.md)\npython src/build_dataset.py\n```\n\nExpected output: `data/processed/english_dataset.csv`\n\n### 2. Model Training\n\n```bash\npython src/mvp_baseline.py\n```\n\nExpected outputs:\n- `models/tfidf_vectorizer.joblib`\n- `models/logreg_model.joblib`\n- `roc_curve.png` (evaluation plot)\n- `lime_explanation.html` (example LIME explanation)\n\n### 3. Run Adversarial Simulation\n\n```bash\npython src/attacker_sim.py\n```\n\nExpected output: `simulation_results/attacker_simulation_log.csv`\n\n### 4. Analyze and Visualize Results\n\n```bash\npython src/analyse_simulation_results.py\npython src/visualise_results.py\n```\n\nExpected outputs:\n- CSV files in `simulation_results/analysis/`\n- PNG figures in `simulation_results/figures/`\n\n### 5. Launch Interactive Dashboard\n\n```bash\nstreamlit run src/app.py\n```\n\nOpen http://localhost:8501 in your browser.\n\n## Testing\n\n### Run All Tests\n\n```bash\n# Run all tests\npytest tests/ -v\n\n# Run only unit tests (fast)\npytest tests/ -v -m unit\n\n# Run with coverage\npytest tests/ --cov=src --cov-report=html\n```\n\n### Test Structure\n\n```\ntests/\n├── __init__.py\n├── conftest.py              # Shared fixtures\n├── test_utils.py            # Utils module tests\n├── test_xai_explainer.py    # XAI tests\n├── test_mvp_baseline.py     # Model training tests\n└── test_attacker_sim.py     # Simulation tests\n```\n\n### Writing New Tests\n\n```python\nimport pytest\n\n@pytest.mark.unit\ndef test_my_function():\n    \"\"\"Test description.\"\"\"\n    result = my_function(\"input\")\n    assert result == \"expected\"\n```\n\nMarkup tests with `@pytest.mark.unit` or `@pytest.mark.integration`.\n\n## Code Quality\n\n### Code Style\n\nThis project follows PEP 8. Check style with:\n\n```bash\n# Check style\nflake8 src/ tests/\n\n# Auto-format code\nblack src/ tests/\n```\n\n### Type Checking\n\n```bash\nmypy src/\n```\n\n### Docstrings\n\nAll functions must have Google-style docstrings:\n\n```python\ndef my_function(param1: str, param2: int) -> bool:\n    \"\"\"\n    Brief description.\n\n    Longer description if needed.\n\n    Args:\n        param1: Description of param1.\n        param2: Description of param2.\n\n    Returns:\n        Description of return value.\n\n    Raises:\n        ValueError: When input is invalid.\n\n    Example:\n        >>> my_function(\"test\", 42)\n        True\n    \"\"\"\n    return True\n```\n\n## Module Organization\n\n### Core Modules\n\n- **mvp_baseline.py**: Model training, evaluation, ROC curves, SHAP explanations\n- **xai_explainer.py**: LIME explanations, linear weight fallback\n- **attacker_sim.py**: Adversarial simulation, attack rule generation\n- **analyse_simulation_results.py**: Metrics computation, summary tables\n- **visualise_results.py**: Chart generation from analysis CSVs\n- **utils.py**: Shared utility functions, constants\n\n### Supporting Modules\n\n- **app.py**: Streamlit dashboard\n- **build_dataset.py**: Dataset preprocessing\n\n## Common Tasks\n\n### Add a New Feature\n\n1. Create branch: `git checkout -b feature/my-feature`\n2. Implement feature with docstrings\n3. Add tests in `tests/`\n4. Run: `pytest tests/ -v`\n5. Commit: `git commit -m \"Add my feature\"`\n\n### Debug Model Training\n\n```python\n# In mvp_baseline.py or interactive session\nfrom src.mvp_baseline import load_model\nvectorizer, clf = load_model()\n\n# Check model coefficients\nimport numpy as np\ncoef = clf.coef_[0]\ntop_indices = np.argsort(np.abs(coef))[-10:]\nfeature_names = vectorizer.get_feature_names_out()\nfor idx in top_indices:\n    print(f\"{feature_names[idx]}: {coef[idx]:.4f}\")\n```\n\n### Test Single Email\n\n```python\nfrom src.mvp_baseline import load_model, predict_single_email\nfrom src.xai_explainer import explain_email\n\ntext = \"Your account needs verification. Click here.\"\npred, name, probs = predict_single_email(text)\nprint(f\"Prediction: {name} (prob={probs['phishing']:.3f})\")\n\nexplanation = explain_email(text)\nfor feat in explanation['top_features']:\n    print(f\"  {feat['term']}: {feat['weight']:+.4f}\")\n```\n\n### Reproduce Simulation\n\n```bash\n# Full pipeline\npython src/build_dataset.py   # Build data\npython src/mvp_baseline.py    # Train model\npython src/attacker_sim.py    # Run simulation\npython src/analyse_simulation_results.py  # Analyze\npython src/visualise_results.py           # Visualize\n```\n\n## Troubleshooting\n\n### ImportError: No module named 'src'\n\nEnsure src/ is in PYTHONPATH:\n\n```bash\nexport PYTHONPATH=\"${PYTHONPATH}:$(pwd)/src\"\n```\n\nOr run from project root:\n\n```bash\npython -m src.mvp_baseline\n```\n\n### Model files not found\n\n```bash\n# Retrain model\npython src/mvp_baseline.py\n```\n\n### LIME not installed\n\n```bash\npip install lime\n```\n\nThe system will automatically fall back to linear weight explanations if LIME is unavailable.\n\n### Jupyter Notebook Issues\n\n```bash\n# Install Jupyter\npip install jupyter notebook\n\n# Run Jupyter\njupyter notebook\n```\n\n## Documentation\n\n- **README.md**: Project overview and quick start\n- **ARCHITECTURE.md**: System design and module details\n- **PROJECT_REPORT.md**: Research report\n- **data/README.md**: Dataset documentation\n- **This file**: Development guide\n\n## Git Workflow\n\n```bash\n# Create feature branch\ngit checkout -b feature/my-feature\n\n# Make changes and commit\ngit add src/\ngit commit -m \"Implement feature X\"\n\n# Push and create PR\ngit push origin feature/my-feature\n\n# Typical commit messages\n# - \"Add docstrings to mvp_baseline.py\"\n# - \"Improve MITRE mapping with multi-label detection\"\n# - \"Fix classify_email() error handling\"\n# - \"Add test suite for xai_explainer\"\n```\n\n## Performance Optimization\n\n### Model Training\n\n- Check time per stage with print statements\n- Profile with `cProfile`:\n\n```python\nimport cProfile\ncProfile.run('main()')\n```\n\n### Inference\n\n- Vectorization: ~1 ms per email\n- Classification: <1 ms per email\n- LIME explanation: ~500 ms per email\n- Linear weight explanation: <1 ms per email\n\nBottleneck: LIME computation. Use linear weights for real-time apps.\n\n## Security Considerations\n\n- **Data Privacy**: Never commit actual email datasets\n- **Model Files**: Keep trained models in `.gitignore`\n- **Credentials**: Use environment variables for sensitive config\n- **Input Validation**: Always validate user email inputs\n\n## References\n\n- **pytest docs**: https://docs.pytest.org/\n- **Google Python Style Guide**: https://google.github.io/styleguide/pyguide.html\n- **PEP 8**: https://www.python.org/dev/peps/pep-0008/\n- **LIME**: https://github.com/marcotcr/lime\n\n---\n\n**Last Updated**: March 2026  \n**Maintainer**: Nathan (FYP Student)\n
+```bash
+git clone <repository-url>
+cd fyp-phishing-detection-mitre-xai
+```
+
+### 2. Create Virtual Environment
+
+```bash
+# Using venv
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Or using conda
+conda create -n phishing-detection python=3.9
+conda activate phishing-detection
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+
+# Optional development tools
+pip install pytest pytest-cov black flake8 mypy
+```
+
+## Project Workflow
+
+### 1. Data Preparation
+
+```bash
+python src/build_dataset.py
+```
+
+Expected output:
+- `data/processed/english_dataset.csv`
+- `data/processed/english_dataset_balanced.csv`
+
+### 2. Model Training
+
+```bash
+python src/mvp_baseline.py
+```
+
+Expected outputs:
+- `models/tfidf_vectorizer.joblib`
+- `models/logreg_model.joblib`
+- `models/multinomial_nb_model.joblib`
+- ROC plot(s) and optional LIME html output
+
+### 3. Run Adversarial Simulation
+
+```bash
+python src/attacker_sim.py
+```
+
+Expected output:
+- `simulation_results/attacker_simulation_log.csv`
+
+Simulation note:
+- Attacker simulation runs at thresholds `0.5`, `0.6`, and `0.7`.
+- The full threshold sweep (`0.10` to `0.95`, step `0.05`) is produced by `src/evaluate_models_rigorously.py`.
+
+### 4. Analyze and Visualize Results
+
+```bash
+python src/analyse_simulation_results.py
+python src/visualise_results.py
+```
+
+Expected outputs:
+- CSV summaries in `simulation_results/analysis/`
+- PNG figures in `simulation_results/figures/`
+
+### 5. Run Rigorous Evaluation (Optional but recommended)
+
+```bash
+python src/evaluate_models_rigorously.py
+```
+
+Expected outputs:
+- `evaluation_results/cv_fold_metrics.csv`
+- `evaluation_results/cv_summary_metrics.csv`
+- `evaluation_results/threshold_sensitivity_logreg.csv`
+- `evaluation_results/calibration_logreg.csv`
+
+### 6. Launch Interactive Dashboard
+
+```bash
+streamlit run src/app.py
+```
+
+## Testing
+
+### Run All Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Run with Coverage
+
+```bash
+pytest tests/ --cov=src --cov-report=html
+```
+
+## Code Quality
+
+### Formatting and Linting
+
+```bash
+black src/ tests/
+flake8 src/ tests/
+```
+
+### Type Checking
+
+```bash
+mypy src/
+```
+
+## Module Organization
+
+### Core Modules
+
+- `mvp_baseline.py`: model training, evaluation, ROC, optional SHAP exploration
+- `xai_explainer.py`: LIME explanations with linear-weight fallback
+- `attacker_sim.py`: adversarial simulation and attack generation
+- `analyse_simulation_results.py`: grouped simulation metrics
+- `visualise_results.py`: chart generation
+- `utils.py`: shared utility functions
+
+### Supporting Modules
+
+- `app.py`: Streamlit dashboard
+- `build_dataset.py`: dataset preparation
+- `evaluate_models_rigorously.py`: CV + threshold sensitivity + calibration
+- `evaluate_mitre_mapping.py`: MITRE mapping validation
+- `run_error_analysis.py`: error analysis outputs
+
+XAI reporting note:
+- Final dissertation/app explainability results use LIME + linear fallback.
+- SHAP remains available in baseline experimentation code for optional exploration.
+
+## Troubleshooting
+
+### Model files not found
+
+```bash
+python src/mvp_baseline.py
+```
+
+### LIME not installed
+
+```bash
+pip install lime
+```
+
+The system falls back to linear-weight explanations if LIME is unavailable.
+
+## Documentation
+
+- `README.md`: overview and quick start
+- `ARCHITECTURE.md`: design and data flow
+- `PROJECT_REPORT.md`: report draft
+- `REPRODUCIBILITY.md`: deterministic rerun guide
+- `data/README.md`: dataset notes
+
+## Git Workflow
+
+```bash
+git checkout -b feature/my-feature
+git add .
+git commit -m "Your commit message"
+git push origin feature/my-feature
+```
+
+---
+
+**Last Updated**: April 2026  
+**Maintainer**: Nathan (FYP Student)

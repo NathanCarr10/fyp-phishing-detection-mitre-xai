@@ -103,6 +103,8 @@ Since we're using Logistic Regression, we can directly look at the coefficients 
 
 **Our approach:** We use LIME when available, but fallback to linear coefficients because they're just as good and much faster.
 
+SHAP support is implemented in the baseline script for exploratory analysis, but final reported XAI results in this dissertation use LIME + linear-weight fallback.
+
 ### 2.3 MITRE ATT&CK Framework
 
 **What is it?**
@@ -357,7 +359,7 @@ Four transformation rules applied to base phishing emails:
 #### 3.6.3 Simulation Loop
 
 ```python
-for threshold in [0.1, 0.15, ..., 0.95]:          # 10 thresholds
+for threshold in [0.5, 0.6, 0.7]:                 # 3 thresholds
     for round in range(5):                          # 5 rounds
         for base_email in BASE_PHISHING_EMAILS:     # ~5 emails
             for variant in generate_variants():     # 16 per email
@@ -372,7 +374,9 @@ for threshold in [0.1, 0.15, ..., 0.95]:          # 10 thresholds
 ```
 
 **Total Simulations:**
-- 10 thresholds × 5 rounds × (5 base phishing × 16 variants + 5 legit) ≈ 50,000 classifications
+- 3 thresholds × 5 rounds × (5 base phishing × 16 variants + 5 legit) ≈ 15,375 classifications
+
+Note: A separate rigorous threshold sensitivity sweep from 0.10 to 0.95 (step 0.05) is reported from `evaluate_models_rigorously.py` outputs.
 
 #### 3.6.4 Metrics
 
@@ -449,7 +453,7 @@ AUC:             XX
 
 ### 5.2 Simulation Results
 
-#### 5.2.1 Overall Metrics (Across All Thresholds)
+#### 5.2.1 Overall Metrics (Across Simulation Thresholds: 0.5, 0.6, 0.7)
 
 *To be populated:*
 - Total phishing emails tested: [X]
@@ -460,9 +464,9 @@ AUC:             XX
 #### 5.2.2 Threshold Analysis
 
 Detection Rate by Threshold:
-- Threshold 0.1: [XX]% detection
 - Threshold 0.5: [XX]% detection
-- Threshold 0.9: [XX]% detection
+- Threshold 0.6: [XX]% detection
+- Threshold 0.7: [XX]% detection
 
 **Observation:** Higher thresholds → lower false positives, higher false negatives
 

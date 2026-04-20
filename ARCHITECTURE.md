@@ -371,8 +371,8 @@ Total: 16 attack variants per base email
 ### Simulation Flow
 
 ```python
-for threshold in [0.1, 0.2, ..., 0.95]:  # 10 thresholds
-    for round in range(5):                 # 5 rounds per threshold
+for threshold in [0.5, 0.6, 0.7]:  # 3 thresholds used in attacker simulation
+    for round in range(5):          # 5 rounds per threshold
         
         # Test each base phishing email + attack variants
         for base_email in BASE_PHISHING_EMAILS:
@@ -388,6 +388,10 @@ for threshold in [0.1, 0.2, ..., 0.95]:  # 10 thresholds
         for legit_email in BASE_LEGIT_EMAILS:
             pred, prob = classify_email(legit_email, threshold)
 ```
+
+Note:
+- The attacker simulation uses thresholds `[0.5, 0.6, 0.7]`.
+- A separate rigorous evaluation sweep across `0.10` to `0.95` (step `0.05`) is implemented in `src/evaluate_models_rigorously.py` and exported to `evaluation_results/threshold_sensitivity_logreg.csv`.
 
 ### Metrics Computed
 
@@ -506,7 +510,7 @@ LR_CLASS_WEIGHT = "balanced"
 SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = "simulation_results/attacker_simulation_log.csv"
 
-THRESHOLDS = [0.10, 0.15, 0.20, ..., 0.95]  # Step of 0.05
+THRESHOLDS = [0.50, 0.60, 0.70]  # Attacker simulation thresholds
 NUM_ROUNDS = 5
 NUM_FEATURES_FOR_EXPLANATION = 10
 

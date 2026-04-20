@@ -292,12 +292,14 @@ Simulates attacker vs. defender scenarios:
 The adversarial simulation tests model robustness against:
 - Single rule attacks (4 rule types)
 - Multi-rule attacks (12 combinations)
-- Threshold sensitivity (0.1 to 0.95)
+- Simulation thresholds (0.5, 0.6, 0.7)
 - Performance summarized by:
   - Attack type
   - Rule chain
   - MITRE technique
   - Classification threshold
+
+Separate from attacker simulation, `src/evaluate_models_rigorously.py` runs threshold sensitivity from `0.10` to `0.95` in steps of `0.05`.
 
 ## Dependencies
 
@@ -306,7 +308,7 @@ The adversarial simulation tests model robustness against:
 | pandas | Data processing |
 | scikit-learn | ML model training & TF-IDF |
 | lime | Local explanations |
-| shap | Global model explanations |
+| shap | Optional global explanations (exploratory baseline script) |
 | matplotlib | Visualization |
 | streamlit | Interactive dashboard |
 | joblib | Model persistence |
