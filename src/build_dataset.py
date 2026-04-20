@@ -26,6 +26,8 @@ TEXT_COLUMN_CANDIDATES = [
     "text_combined", "mail", "data"
 ]
 
+TEXT_NAME_KEYWORDS = ("text", "body", "message", "content")
+
 
 def pick_text_column(df: pd.DataFrame) -> str:
     """Try to find the best column that contains email text."""
@@ -39,7 +41,7 @@ def pick_text_column(df: pd.DataFrame) -> str:
     # 2) Look for any column containing 'text' or 'body' in the name
     for c in cols:
         name = str(c).lower()
-        if "text" in name or "body" in name or "message" in name or "content" in name:
+        if any(keyword in name for keyword in TEXT_NAME_KEYWORDS):
             return c
 
     # 3) Fallback: first column that looks like text (object/string dtype)
