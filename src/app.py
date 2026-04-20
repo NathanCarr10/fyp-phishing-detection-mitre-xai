@@ -133,42 +133,51 @@ def get_model(model_choice: str = "logistic_regression"):
 
 def validate_email_input(text: str) -> tuple[bool, str]:
     """Check whether the email text looks valid enough to process."""
-    if not text or not text.strip():
+    cleaned_text = text.strip() if isinstance(text, str) else ""
+
+    if not cleaned_text:
         return False, "Email text cannot be empty."
-    
-    if len(text.strip()) < 5:
+
+    text_len = len(cleaned_text)
+    if text_len < 5:
         return False, "Email text is too short. Please provide at least 5 characters."
-    
-    if len(text.strip()) > 10000:
+
+    if text_len > 10000:
         return False, "Email text is too long. Maximum 10,000 characters allowed."
-    
+
     return True, "Email text is valid."
+
+
+CONFIDENCE_LABELS = [
+    (0.85, "Very High Confidence"),
+    (0.70, "High Confidence"),
+    (0.55, "Moderate Confidence"),
+    (0.40, "Low Confidence"),
+    (0.00, "Very Low Confidence"),
+]
+
+CONFIDENCE_COLORS = [
+    (0.75, "red"),
+    (0.55, "orange"),
+    (0.40, "gray"),
+    (0.00, "green"),
+]
 
 
 def get_confidence_color(prob: float) -> str:
     """Pick a colour name based on the probability."""
-    if prob >= 0.75:
-        return "red"
-    elif prob >= 0.55:
-        return "orange"
-    elif prob >= 0.40:
-        return "gray"
-    else:
-        return "green"
+    for threshold_value, color in CONFIDENCE_COLORS:
+        if prob >= threshold_value:
+            return color
+    return "green"
 
 
 def get_confidence_label(prob: float) -> str:
     """Return a simple confidence label for the score."""
-    if prob >= 0.85:
-        return "Very High Confidence"
-    elif prob >= 0.70:
-        return "High Confidence"
-    elif prob >= 0.55:
-        return "Moderate Confidence"
-    elif prob >= 0.40:
-        return "Low Confidence"
-    else:
-        return "Very Low Confidence"
+    for threshold_value, label in CONFIDENCE_LABELS:
+        if prob >= threshold_value:
+            return label
+    return "Very Low Confidence"
 
 
 # ================== SIDEBAR ================== #
