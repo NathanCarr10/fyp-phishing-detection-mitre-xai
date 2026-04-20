@@ -55,20 +55,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_stages(skip_build_dataset: bool) -> list[tuple[str, str]]:
-    stages: list[tuple[str, str]] = []
+    base_stages: list[tuple[str, str]] = [
+        ("train_models", "src/mvp_baseline.py"),
+        ("run_simulation", "src/attacker_sim.py"),
+        ("analyse_results", "src/analyse_simulation_results.py"),
+        ("visualise_results", "src/visualise_results.py"),
+    ]
 
-    if not skip_build_dataset:
-        stages.append(("build_dataset", "src/build_dataset.py"))
+    if skip_build_dataset:
+        return base_stages
 
-    stages.extend(
-        [
-            ("train_models", "src/mvp_baseline.py"),
-            ("run_simulation", "src/attacker_sim.py"),
-            ("analyse_results", "src/analyse_simulation_results.py"),
-            ("visualise_results", "src/visualise_results.py"),
-        ]
-    )
-    return stages
+    return [("build_dataset", "src/build_dataset.py"), *base_stages]
 
 
 def run_stage(stage_name: str, script_path: str, env: dict[str, str]) -> float:
