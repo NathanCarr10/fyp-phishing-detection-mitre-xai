@@ -146,49 +146,41 @@ def main():
 
     # --- Generate summaries ---
 
-    summary_by_threshold = summarise_by_group(df, ["threshold"])
-    summary_by_attack_type = summarise_by_group(df, ["attack_type"])
-    summary_by_rule_chain = summarise_by_group(df, ["rule_chain"])
-    summary_by_mitre = summarise_by_group(df, ["mitre_technique"])
+    summary_configs = {
+        "threshold": ["threshold"],
+        "attack_type": ["attack_type"],
+        "rule_chain": ["rule_chain"],
+        "mitre": ["mitre_technique"],
+        "threshold_attack_type": ["threshold", "attack_type"],
+        "threshold_rule_chain": ["threshold", "rule_chain"],
+        "threshold_mitre": ["threshold", "mitre_technique"],
+    }
 
-    # Optional richer summaries
-    summary_by_threshold_attack_type = summarise_by_group(df, ["threshold", "attack_type"])
-    summary_by_threshold_rule_chain = summarise_by_group(df, ["threshold", "rule_chain"])
-    summary_by_threshold_mitre = summarise_by_group(df, ["threshold", "mitre_technique"])
+    summaries = {
+        name: summarise_by_group(df, group_cols)
+        for name, group_cols in summary_configs.items()
+    }
 
     # --- Save outputs ---
 
-    out_threshold = os.path.join(OUTPUT_DIR, "summary_by_threshold.csv")
-    out_attack_type = os.path.join(OUTPUT_DIR, "summary_by_attack_type.csv")
-    out_rule_chain = os.path.join(OUTPUT_DIR, "summary_by_rule_chain.csv")
-    out_mitre = os.path.join(OUTPUT_DIR, "summary_by_mitre.csv")
-    out_threshold_attack_type = os.path.join(OUTPUT_DIR, "summary_by_threshold_attack_type.csv")
-    out_threshold_rule_chain = os.path.join(OUTPUT_DIR, "summary_by_threshold_rule_chain.csv")
-    out_threshold_mitre = os.path.join(OUTPUT_DIR, "summary_by_threshold_mitre.csv")
+    output_paths = {
+        name: os.path.join(OUTPUT_DIR, f"summary_by_{name}.csv")
+        for name in summaries
+    }
 
-    summary_by_threshold.to_csv(out_threshold, index=False)
-    summary_by_attack_type.to_csv(out_attack_type, index=False)
-    summary_by_rule_chain.to_csv(out_rule_chain, index=False)
-    summary_by_mitre.to_csv(out_mitre, index=False)
-    summary_by_threshold_attack_type.to_csv(out_threshold_attack_type, index=False)
-    summary_by_threshold_rule_chain.to_csv(out_threshold_rule_chain, index=False)
-    summary_by_threshold_mitre.to_csv(out_threshold_mitre, index=False)
+    for name, summary_df in summaries.items():
+        summary_df.to_csv(output_paths[name], index=False)
 
     # --- Console previews ---
 
-    print_preview("Summary by Threshold", summary_by_threshold)
-    print_preview("Summary by Attack Type", summary_by_attack_type)
-    print_preview("Summary by Rule Chain", summary_by_rule_chain)
-    print_preview("Summary by MITRE Technique", summary_by_mitre)
+    print_preview("Summary by Threshold", summaries["threshold"])
+    print_preview("Summary by Attack Type", summaries["attack_type"])
+    print_preview("Summary by Rule Chain", summaries["rule_chain"])
+    print_preview("Summary by MITRE Technique", summaries["mitre"])
 
     print("\nAnalysis complete. Files saved to:")
-    print(f" - {out_threshold}")
-    print(f" - {out_attack_type}")
-    print(f" - {out_rule_chain}")
-    print(f" - {out_mitre}")
-    print(f" - {out_threshold_attack_type}")
-    print(f" - {out_threshold_rule_chain}")
-    print(f" - {out_threshold_mitre}")
+    for path in output_paths.values():
+        print(f" - {path}")
 
 
 if __name__ == "__main__":
