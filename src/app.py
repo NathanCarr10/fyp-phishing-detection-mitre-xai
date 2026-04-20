@@ -26,6 +26,7 @@ from mvp_baseline import load_model
 from mvp_baseline import NB_MODEL_PATH, MODEL_PATH
 from mvp_baseline import get_model_compatibility_warning
 from email_ingestion import parse_eml_file, analyze_combined_text
+from xai_explainer import get_explainer_availability
 
 
 # ================== PATHS ================== #
@@ -197,6 +198,10 @@ st.sidebar.divider()
 
 st.sidebar.subheader("Prediction Settings")
 
+explainer_availability = get_explainer_availability()
+lime_available = explainer_availability["lime_available"]
+shap_available = explainer_availability["shap_available"]
+
 threshold = st.sidebar.slider(
     "Classification Threshold",
     min_value=0.10,
@@ -227,6 +232,11 @@ use_shap = st.sidebar.checkbox(
     value=False,
     help="Uses SHAP values with the linear model. If SHAP is unavailable, the app falls back to linear weights.",
 )
+
+if use_lime and not lime_available:
+    st.sidebar.warning("LIME is not installed in this environment. Linear fallback will be used.")
+if use_shap and not shap_available:
+    st.sidebar.warning("SHAP is not installed in this environment. Linear fallback will be used.")
 
 show_figures = st.sidebar.checkbox(
     "Show Simulation Figures",
@@ -513,6 +523,16 @@ if analyse_clicked:
             st.subheader("🔍 Why This Classification?")
             
             st.info(f"**Explanation Method:** {explanation['method']}")
+            if use_shap and explanation.get("method") != "shap":
+                if not shap_available:
+                    st.warning("SHAP is not installed in this environment. Showing linear fallback explanation.")
+                else:
+                    st.warning("SHAP was requested but could not be applied for this email. Showing linear fallback explanation.")
+            elif use_lime and explanation.get("method") != "lime":
+                if not lime_available:
+                    st.warning("LIME is not installed in this environment. Showing linear fallback explanation.")
+                else:
+                    st.warning("LIME was requested but could not be applied for this email. Showing linear fallback explanation.")
             
             col1, col2 = st.columns([2, 1])
             

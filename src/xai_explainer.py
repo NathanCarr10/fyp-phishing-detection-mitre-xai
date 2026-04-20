@@ -45,6 +45,14 @@ _clf = None
 _shap_linear_explainer = None
 
 
+def get_explainer_availability() -> Dict[str, bool]:
+    """Return which optional explanation backends are available."""
+    return {
+        "lime_available": bool(_LIME_AVAILABLE),
+        "shap_available": bool(_SHAP_AVAILABLE),
+    }
+
+
 def _get_model():
     """Load the model once and reuse it on later calls."""
     global _vectorizer, _clf
@@ -236,6 +244,9 @@ def explain_email(
         except Exception:
             features = _explain_with_linear_weights(text, num_features=num_features)
             method = "linear"
+    elif use_shap and not _SHAP_AVAILABLE:
+        features = _explain_with_linear_weights(text, num_features=num_features)
+        method = "linear"
     elif use_lime and _LIME_AVAILABLE:
         try:
             features = _explain_with_lime(text, num_features=num_features)
@@ -243,6 +254,9 @@ def explain_email(
         except Exception:
             features = _explain_with_linear_weights(text, num_features=num_features)
             method = "linear"
+    elif use_lime and not _LIME_AVAILABLE:
+        features = _explain_with_linear_weights(text, num_features=num_features)
+        method = "linear"
     else:
         features = _explain_with_linear_weights(text, num_features=num_features)
         method = "linear"

@@ -146,7 +146,7 @@ This will:
 #### 5. Run the Dashboard
 
 ```bash
-streamlit run src/app.py
+python -m streamlit run src/app.py
 ```
 
 Or if you're on Windows and Python isn't in PATH:
