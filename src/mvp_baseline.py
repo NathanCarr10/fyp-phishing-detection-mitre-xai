@@ -18,6 +18,7 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import roc_curve, roc_auc_score
 import matplotlib.pyplot as plt
 import joblib
+from utils import get_phishing_class_index
 
 try:
     from lime.lime_text import LimeTextExplainer  # type: ignore[import-not-found]
@@ -308,13 +309,7 @@ def plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png"):
         return None
 
     proba = clf.predict_proba(X_test_tfidf)
-
-    # Find which column is class "1"
-    if 1 in clf.classes_:
-        phishing_index = list(clf.classes_).index(1)
-    else:
-        # fallback: assume second column is "positive"
-        phishing_index = 1
+    phishing_index = get_phishing_class_index(clf)
 
     y_score = proba[:, phishing_index]
 
@@ -371,11 +366,10 @@ def predict_single_email(text: str, model_path=MODEL_PATH):
     proba = clf.predict_proba(X)[0]
     pred = clf.predict(X)[0]
 
-    # Map probabilities to label names
-    prob_dict = {}
-    for label, p in zip(clf.classes_, proba):
-        name = LABEL_MAP.get(label, str(label))
-        prob_dict[name] = float(p)
+    prob_dict = {
+        LABEL_MAP.get(label, str(label)): float(p)
+        for label, p in zip(clf.classes_, proba)
+    }
 
     pred_name = LABEL_MAP.get(pred, str(pred))
 
