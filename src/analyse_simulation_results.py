@@ -71,21 +71,7 @@ def compute_metrics(df: pd.DataFrame) -> dict:
 
 
 def summarise_by_group(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
-    """
-    Group the simulation log by one or more columns and compute metrics for each group.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Full simulation log dataframe.
-    group_cols : list[str]
-        Columns to group by.
-
-    Returns
-    -------
-    pd.DataFrame
-        Summary dataframe with one row per group.
-    """
+    """Group the log by the given columns and calculate metrics for each group."""
     rows = []
 
     grouped = df.groupby(group_cols, dropna=False)

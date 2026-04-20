@@ -150,19 +150,7 @@ def _extract_address_field(msg, header_name: str) -> str:
 
 
 def parse_eml_file(file_bytes: bytes) -> Dict[str, Any]:
-    """
-    Parse .eml bytes and extract safe metadata/content fields.
-
-    Returns:
-        dict with keys:
-        - from
-        - to
-        - subject
-        - date
-        - body
-        - attachment_names
-        - combined_text
-    """
+    """Parse a .eml file and pull out the fields I need."""
     if not isinstance(file_bytes, (bytes, bytearray)) or not file_bytes:
         raise ValueError("Uploaded .eml content is empty or invalid.")
 
@@ -202,16 +190,7 @@ def analyze_combined_text(
     vectorizer=None,
     clf=None,
 ) -> Dict[str, Any]:
-    """
-    Analyze email text with existing project functions.
-
-    Returns:
-        dict with keys:
-        - predicted_label
-        - phishing_probability
-        - mitre_mapping
-        - xai_explanation
-    """
+    """Run the model, MITRE mapping, and explanation on one email."""
     if not isinstance(combined_text, str) or not combined_text.strip():
         raise ValueError("combined_text must be a non-empty string.")
 

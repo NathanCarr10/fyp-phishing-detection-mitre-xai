@@ -21,28 +21,17 @@ LABEL_MAP = {
 
 
 def create_logistic_regression():
-    """Create and return a Logistic Regression classifier."""
+    """Create the Logistic Regression model used in this project."""
     return LogisticRegression(max_iter=1000, class_weight="balanced")
 
 
 def create_multinomial_nb():
-    """Create and return a Multinomial Naive Bayes classifier."""
+    """Create the Multinomial Naive Bayes model used in this project."""
     return MultinomialNB()
 
 
 def train_classifier(classifier, X_train_tfidf, y_train, model_name="Model"):
-    """
-    Train a classifier on TF-IDF transformed text data.
-    
-    Args:
-        classifier: Scikit-learn classifier object
-        X_train_tfidf: Sparse matrix of TF-IDF features (training)
-        y_train: Array of training labels
-        model_name: Name of model for logging (e.g., "Logistic Regression")
-    
-    Returns:
-        Trained classifier object
-    """
+    """Train a classifier on the TF-IDF training data."""
     print(f"\nTraining {model_name}...")
     classifier.fit(X_train_tfidf, y_train)
     print(f"{model_name} training complete.")
@@ -50,18 +39,7 @@ def train_classifier(classifier, X_train_tfidf, y_train, model_name="Model"):
 
 
 def evaluate_classifier(classifier, X_test_tfidf, y_test, model_name="Model"):
-    """
-    Evaluate classifier on test data and print metrics.
-    
-    Args:
-        classifier: Trained classifier
-        X_test_tfidf: Sparse matrix of TF-IDF features (test)
-        y_test: Array of test labels
-        model_name: Name of model for logging
-    
-    Returns:
-        dict: Contains predictions, accuracy, and AUC score
-    """
+    """Evaluate a classifier on the test split and print the results."""
     print(f"\n{'='*60}")
     print(f"Evaluating {model_name}")
     print(f"{'='*60}")
@@ -94,16 +72,7 @@ def evaluate_classifier(classifier, X_test_tfidf, y_test, model_name="Model"):
 
 
 def get_model_probabilities(classifier, X_tfidf):
-    """
-    Get probability predictions from classifier.
-    
-    Args:
-        classifier: Trained classifier with predict_proba method
-        X_tfidf: Sparse matrix of TF-IDF features
-    
-    Returns:
-        dict: Probabilities for each class
-    """
+    """Return the class probabilities for a single TF-IDF row."""
     if not hasattr(classifier, "predict_proba"):
         raise ValueError("Classifier does not support predict_proba")
     

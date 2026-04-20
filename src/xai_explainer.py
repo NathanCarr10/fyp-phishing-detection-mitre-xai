@@ -2,31 +2,18 @@
 #
 # Explains why the model predicted phishing or legitimate.
 #
-# - Loads the saved TF-IDF vectorizer and classifier
-# - Exposes a main explain_email(...) function
-# - Uses LIME when available
-# - Falls back to a simple linear-weight explanation when LIME is missing
-#
-# Usage (CLI):
-#   python src/xai_explainer.py
-#   -> paste an email and see prediction + top features
-#
-# Usage (in code):
-#   from xai_explainer import explain_email
-#   result = explain_email("Some email text here")
-#   print(result["pred_label"], result["phishing_probability"])
-#   for feat in result["top_features"]:
-#       print(feat["term"], feat["weight"])
+# It loads the saved model, tries LIME first, and falls back to a simple
+# linear explanation when LIME is not available.
 
 from __future__ import annotations
 
 import sys
 from typing import Any, Dict, List, Tuple
 
-from mvp_baseline import load_model  # your existing model loader
+from mvp_baseline import load_model  # model loader used by the project
 
 
-# Try to import LIME if available
+# Optional LIME support
 try:
     from lime.lime_text import LimeTextExplainer  # type: ignore
     _LIME_AVAILABLE = True
@@ -34,7 +21,7 @@ except ImportError:
     _LIME_AVAILABLE = False
 
 
-# --- Internal: model loading / caching -------------------------------------------------
+# Internal model cache
 
 
 _vectorizer = None
@@ -42,7 +29,7 @@ _clf = None
 
 
 def _align_features_for_classifier(X, clf):
-    """Align transformed features with classifier expected input size."""
+    """Trim the vectorized features if the classifier expects fewer columns."""
     expected_features = getattr(clf, "n_features_in_", None)
     if expected_features is None and hasattr(clf, "coef_"):
         expected_features = clf.coef_.shape[1]
@@ -59,22 +46,7 @@ def _align_features_for_classifier(X, clf):
 
 
 def _get_model():
-    """
-    Lazy-load and cache the TF-IDF vectorizer and classifier.
-
-    Uses global variables to cache loaded models and avoid reloading on repeated calls.
-
-    Returns:
-        tuple: (vectorizer, clf) where:
-               - vectorizer: TfidfVectorizer object for feature extraction
-               - clf: LogisticRegression classifier for predictions
-
-    Raises:
-        FileNotFoundError: If model files not found in models/ directory.
-
-    Note:
-        This is an internal function. Use explain_email() for public API.
-    """
+    """Load the model once and reuse it on later calls."""
     global _vectorizer, _clf
     if _vectorizer is None or _clf is None:
         _vectorizer, _clf = load_model()
@@ -82,71 +54,33 @@ def _get_model():
 
 
 def _get_phishing_class_index(clf) -> int:
-    """
-    Get the index of the phishing class in classifier output.
-
-    Args:
-        clf: Fitted classifier with classes_ attribute.
-
-    Returns:
-        int: Index (0 or 1) of phishing class in prediction arrays.
-
-    Note:
-        - Returns index of label 1 if present in clf.classes_
-        - Falls back to index 1 (second position) as default
-        - Internal function used by explanation methods
-    """
+    """Return the probability column for the phishing class."""
     if hasattr(clf, "classes_") and 1 in clf.classes_:
         return list(clf.classes_).index(1)
-    # Fallback: assume second column is the "positive" phishing class
+    # Fallback: assume the second column is the positive class.
     return 1
 
 
-# --- LIME-based explanation ------------------------------------------------------------
+# LIME explanation
 
 
 def _explain_with_lime(
     text: str,
     num_features: int = 10,
 ) -> List[Tuple[str, float]]:
-    """
-    Generate LIME explanation for an email.
-
-    Uses Local Interpretable Model-agnostic Explanations (LIME) to identify
-    top contributing words to the phishing classification decision.
-
-    Args:
-        text (str): Email text to explain.
-        num_features (int): Number of top features (words) to return (default: 10).
-
-    Returns:
-        List[Tuple[str, float]]: List of (term, weight) tuples sorted by absolute magnitude.
-                                 Positive weights indicate phishing indicators,
-                                 negative weights indicate legitimate indicators.
-
-    Raises:
-        RuntimeError: If LIME is not installed.
-        Exception: If LIME computation fails (caught in explain_email()).
-
-    Note:
-        - Internal function. Requires LIME to be available.
-        - Creates new LimeTextExplainer for each call (can be optimized).
-        - LIME uses random perturbations, so results vary with seed.
-    """
+    """Use LIME to show which words pushed the prediction."""
     if not _LIME_AVAILABLE:
         raise RuntimeError("LIME is not available in this environment.")
 
     vectorizer, clf = _get_model()
     phishing_index = _get_phishing_class_index(clf)
 
-    # LIME expects a callable that takes a list of texts and returns
-    # an array of probabilities for each class.
+    # LIME expects a function that returns class probabilities for a list of texts.
     def predict_proba(texts: List[str]):
         X = vectorizer.transform(texts)
         X = _align_features_for_classifier(X, clf)
         return clf.predict_proba(X)
 
-    # Class names: align indices with clf.classes_
     if hasattr(clf, "classes_"):
         class_labels = clf.classes_
         class_names = [str(c) for c in class_labels]
@@ -161,85 +95,51 @@ def _explain_with_lime(
         labels=[phishing_index],
     )
 
-    # LIME's as_list(label=...) returns list[(feature, weight)]
     feature_weights = explanation.as_list(label=phishing_index)
     return feature_weights
 
 
-# --- Simple linear-weight explanation (fallback) ---------------------------------------
+# Linear fallback
 
 
 def _explain_with_linear_weights(
     text: str,
     num_features: int = 10,
 ) -> List[Tuple[str, float]]:
-    """
-    Explain email using linear model coefficients and TF-IDF weights.
-
-    Computes importance scores as: TF-IDF weight × model coefficient.
-    This provides a simple, fast explanation without LIME dependencies.
-
-    Args:
-        text (str): Email text to explain.
-        num_features (int): Number of top features to return (default: 10).
-
-    Returns:
-        List[Tuple[str, float]]: List of (term, contribution) pairs,
-                                 sorted by absolute contribution magnitude.
-                                 Higher magnitude = stronger influence.
-
-    Requirements:
-        - Vectorizer must support get_feature_names_out()
-        - Classifier must have coef_ attribute (e.g., LogisticRegression)
-
-    Note:
-        - Fallback method when LIME unavailable or fails
-        - Global explanation (same features across all emails with same words)
-        - Faster than LIME (~1ms vs ~500ms)
-        - Assumes linear separability
-    """
+    """Use the model coefficients as a simple fallback explanation."""
     vectorizer, clf = _get_model()
     phishing_index = _get_phishing_class_index(clf)
 
-    # Transform text to TF-IDF vector
     X = vectorizer.transform([text])
     X = _align_features_for_classifier(X, clf)
-    # Convert to dense to inspect per-feature contributions
     X_dense = X.toarray()[0]
 
-    # Get coefficients for the phishing class
     if not hasattr(clf, "coef_"):
-        # If no coef_ attribute, we can't do this explanation
         return []
 
     if clf.coef_.shape[0] == 1:
-        # In binary logistic regression, the single row corresponds to the positive class.
         coef = clf.coef_[0]
     else:
         coef = clf.coef_[phishing_index]
 
-    # Feature names
     try:
         feature_names = vectorizer.get_feature_names_out()
     except AttributeError:
         feature_names = vectorizer.get_feature_names()
 
-    # Contribution of each feature = tf-idf value * coefficient
     contributions: List[Tuple[str, float]] = []
     for idx, value in enumerate(X_dense):
         if value == 0.0:
-            continue  # feature not present in this email
+            continue
         contrib = float(value * coef[idx])
         contributions.append((feature_names[idx], contrib))
 
-    # Sort by absolute contribution, descending
     contributions.sort(key=lambda x: abs(x[1]), reverse=True)
 
-    # Return top-k
     return contributions[:num_features]
 
 
-# --- High-level public API -------------------------------------------------------------
+# Public API
 
 
 def explain_email(
@@ -248,54 +148,17 @@ def explain_email(
     threshold: float = 0.5,
     use_lime: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Generate an explanation for a single email.
-
-    This function:
-      - Loads the vectorizer and classifier
-      - Predicts phishing probability and label using the given threshold
-      - Computes top contributing features either with LIME (if available)
-        or with a simple linear-weight fallback.
-      - Returns a structured dict suitable for logging or JSON.
-
-    Parameters
-    ----------
-    text : str
-        The email text to classify and explain.
-    num_features : int
-        Number of top features (words) to include in the explanation.
-    threshold : float
-        Decision threshold on P(phishing) for classifying as phishing (1).
-    use_lime : bool
-        If True, attempt to use LIME if installed. If LIME is not available
-        or use_lime is False, fallback to linear-weight explanation.
-
-    Returns
-    -------
-    Dict[str, Any]
-        {
-            "text": str,
-            "pred_label": int,
-            "phishing_probability": float,
-            "threshold": float,
-            "is_phishing": bool,
-            "top_features": List[{"term": str, "weight": float}],
-            "method": "lime" or "linear",
-        }
-    """
+    """Predict a single email and return the explanation in a dict."""
     vectorizer, clf = _get_model()
     phishing_index = _get_phishing_class_index(clf)
 
-    # Predict probability
     X = vectorizer.transform([text])
     X = _align_features_for_classifier(X, clf)
     proba = clf.predict_proba(X)[0]
     phishing_prob = float(proba[phishing_index])
 
-    # Apply threshold
     pred_label = 1 if phishing_prob >= threshold else 0
 
-    # Get feature importances
     features: List[Tuple[str, float]] = []
     method = "none"
 
@@ -304,7 +167,6 @@ def explain_email(
             features = _explain_with_lime(text, num_features=num_features)
             method = "lime"
         except Exception:
-            # If anything goes wrong with LIME, fallback gracefully
             features = _explain_with_linear_weights(text, num_features=num_features)
             method = "linear"
     else:
@@ -326,29 +188,11 @@ def explain_email(
     }
 
 
-# --- Simple CLI for manual testing -----------------------------------------------------
+# Command-line test helper
 
 
 def _cli():
-    """
-    Interactive command-line interface for testing explanations.
-
-    Allows manual testing by pasting email texts and viewing explanations.
-
-    Usage:
-        python src/xai_explainer.py
-        [Paste email text and press Enter]
-        [View prediction and top features]
-        [Ctrl+C to exit]
-
-    Returns:
-        None: Runs interactive loop until user exits.
-
-    Note:
-        - Requires trained model (run mvp_baseline.py first)
-        - Uses LIME if available, falls back to linear weights
-        - Example usage in development/debugging
-    """
+    """Simple command-line test loop for manual checks."""
     print("XAI Email Explainer")
     print("-------------------")
     print("Paste an email below. Press Ctrl+C to exit.\n")

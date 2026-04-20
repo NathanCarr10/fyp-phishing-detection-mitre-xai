@@ -1,11 +1,8 @@
 """
-Runs a stronger evaluation pass for the phishing models.
+Runs a more careful evaluation for the phishing models.
 
-Instead of just one train/test split, this script adds:
-- repeated stratified cross-validation
-- confidence intervals
-- threshold sensitivity checks
-- calibration checks (Brier score + ECE)
+It goes beyond one train/test split by using repeated cross-validation,
+threshold checks, and calibration checks.
 
 Run:
     python src/evaluate_models_rigorously.py
@@ -61,8 +58,8 @@ def parse_args() -> argparse.Namespace:
 
 def load_data(path: str, text_col: str, label_col: str) -> tuple[np.ndarray, np.ndarray]:
     df = pd.read_csv(path).dropna(subset=[text_col, label_col])
-    texts = df[text_col].astype(str).values
-    labels = df[label_col].astype(int).values
+    texts = np.asarray(df[text_col].astype(str).tolist(), dtype=object)
+    labels = np.asarray(df[label_col].astype(int).tolist(), dtype=int)
     return texts, labels
 
 
@@ -116,14 +113,7 @@ def evaluate_model_cv(
     n_repeats: int,
     random_state: int,
 ) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
-    """
-    Evaluate one model with repeated stratified CV.
-
-    Returns:
-        fold_df: per-fold metrics
-        all_true: concatenated out-of-fold true labels
-        all_prob: concatenated out-of-fold phishing probabilities
-    """
+    """Run repeated stratified CV and collect fold metrics."""
     cv = RepeatedStratifiedKFold(
         n_splits=n_splits,
         n_repeats=n_repeats,
@@ -292,7 +282,8 @@ def main() -> None:
 
     threshold_df = threshold_sensitivity(logreg_true, logreg_prob)
     best_idx = threshold_df["f1"].idxmax()
-    best_threshold = float(threshold_df.loc[best_idx, "threshold"])
+    threshold_series = pd.to_numeric(threshold_df["threshold"], errors="coerce")
+    best_threshold = float(threshold_series.loc[best_idx])
 
     brier = float(brier_score_loss(logreg_true, logreg_prob))
     ece = expected_calibration_error(logreg_true, logreg_prob, n_bins=10)

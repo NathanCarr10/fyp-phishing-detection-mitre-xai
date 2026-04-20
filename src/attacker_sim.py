@@ -15,8 +15,8 @@ SIM_OUTPUT_DIR = "simulation_results"
 SIM_OUTPUT_PATH = os.path.join(SIM_OUTPUT_DIR, "attacker_simulation_log.csv")
 
 
-# ============== MITRE ATT&CK Mapping Patterns ============== #
-# Maps email characteristics to MITRE phishing techniques
+# MITRE ATT&CK mapping patterns
+# These rules match common phishing clues in an email.
 
 MITRE_PATTERNS = {
     'T1566.002': {
@@ -53,33 +53,7 @@ MITRE_PATTERNS = {
 
 
 def mitre_mapping(email_text: str, return_all: bool = False, return_details: bool = False):
-    """
-    Map email to MITRE ATT&CK phishing techniques based on pattern matching.
-
-    Args:
-        email_text (str): Email text to analyze.
-        return_all (bool): If True, return all matching techniques (multi-label).
-                          If False (default), return single highest-confidence match.
-        return_details (bool): If True, return additional metadata including
-                      per-technique scores and confidence.
-
-    Returns:
-        str or list: String technique code and name if return_all=False,
-                     List of matching techniques if return_all=True.
-                     Always includes primary fallback if no patterns match.
-
-    Example:
-        >>> text = "Click here to verify: http://phishing.com"
-        >>> mitre_mapping(text)
-        'T1566.002 - Phishing: Link'
-        >>> mitre_mapping(text, return_all=True)
-        ['T1566.002 - Phishing: Link']
-
-    Note:
-        - Patterns are matched case-insensitively
-        - Multi-label detection shows threat diversity
-        - Primary fallback is T1566.001 (generic phishing)
-    """
+    """Match an email against the MITRE phishing technique rules."""
     text_lower = email_text.lower()
     matched_techniques = []
 

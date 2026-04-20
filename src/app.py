@@ -2,13 +2,8 @@
 #
 # Main Streamlit app for my phishing detection project.
 #
-# What this app does:
-# - lets you paste email text (or load a .eml file)
-# - predicts phishing vs legitimate
-# - shows phishing probability and confidence styling
-# - shows MITRE technique mapping
-# - shows top explanation features for the prediction
-# - displays saved simulation charts
+# This app lets you paste email text or load a .eml file,
+# then shows the prediction, MITRE mapping, and explanation results.
 #
 # Run from project root:
 #   streamlit run src/app.py
@@ -62,8 +57,6 @@ FEATURE_EXPLANATIONS = {
 
 # ================== PAGE CONFIG ================== #
 
-# ================== PAGE CONFIG ================== #
-
 st.set_page_config(
     page_title="Phishing Detection with XAI & MITRE Mapping",
     page_icon="🔒",
@@ -102,19 +95,7 @@ st.markdown("""
 
 @st.cache_resource
 def get_model(model_choice: str = "logistic_regression"):
-    """
-    Load and cache the vectorizer and classifier.
-    
-    Args:
-        model_choice: "logistic_regression" or "naive_bayes"
-    
-    Returns:
-        tuple: (vectorizer, classifier) or None if files not found
-        
-    Raises:
-        FileNotFoundError: If model files are missing
-        Exception: For other loading errors
-    """
+    """Load the chosen model and keep it cached for reuse."""
     try:
         # Select model path based on choice
         if model_choice == "naive_bayes":
@@ -151,12 +132,7 @@ def get_model(model_choice: str = "logistic_regression"):
 # ================== HELPER FUNCTIONS ================== #
 
 def validate_email_input(text: str) -> tuple[bool, str]:
-    """
-    Validate email input and provide helpful feedback.
-    
-    Returns:
-        tuple: (is_valid, message)
-    """
+    """Check whether the email text looks valid enough to process."""
     if not text or not text.strip():
         return False, "Email text cannot be empty."
     
@@ -170,7 +146,7 @@ def validate_email_input(text: str) -> tuple[bool, str]:
 
 
 def get_confidence_color(prob: float) -> str:
-    """Get color based on confidence probability."""
+    """Pick a colour name based on the probability."""
     if prob >= 0.75:
         return "red"
     elif prob >= 0.55:
@@ -182,7 +158,7 @@ def get_confidence_color(prob: float) -> str:
 
 
 def get_confidence_label(prob: float) -> str:
-    """Get confidence label based on probability."""
+    """Return a simple confidence label for the score."""
     if prob >= 0.85:
         return "Very High Confidence"
     elif prob >= 0.70:
@@ -356,7 +332,8 @@ with col1:
 
 with col2:
     if st.button("📋 Load Example", key="load_example"):
-        st.session_state.email_text = example_emails[example_choice]
+        selected_key = example_choice if example_choice is not None else "⚠️ Account Suspension (Phishing)"
+        st.session_state.email_text = example_emails[selected_key]
 
 
 # ================== MAIN INPUT ================== #
@@ -459,7 +436,8 @@ if analyse_clicked:
     else:
         try:
             # Load model based on sidebar selection
-            vectorizer, clf = get_model(model_choice=model_choice)
+            selected_model = model_choice if model_choice is not None else "logistic_regression"
+            vectorizer, clf = get_model(model_choice=selected_model)
 
             # Shared analysis flow for manual text and uploaded .eml content.
             analysis_result = analyze_combined_text(
@@ -631,9 +609,9 @@ if show_figures:
         "against adversarial attacks with different thresholds and rule combinations."
     )
     st.caption(
-        "Note: These charts are pre-generated files from simulation runs and do not "
-        "change when you switch the model in the sidebar. The model selector affects "
-        "the live email analysis section above."
+        "These charts come from the saved simulation runs, so they stay the same "
+        "even if you change the model in the sidebar. The model selector only "
+        "changes the live email analysis above."
     )
     
     figure_files = [
@@ -671,7 +649,7 @@ if show_figures:
             
             with col2:
                 try:
-                    st.image(str(fig_path), use_container_width=True)
+                    st.image(str(fig_path), use_column_width=True)
                 except Exception as e:
                     st.error(f"Could not load image: {str(e)}")
 

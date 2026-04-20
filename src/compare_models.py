@@ -36,7 +36,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 
-# ================== CONFIGURATION ================== #
+# Settings
 
 BALANCED_DATA_PATH = "data/processed/english_dataset_balanced.csv"
 DATA_PATH = BALANCED_DATA_PATH if os.path.exists(BALANCED_DATA_PATH) else "data/processed/english_dataset.csv"
@@ -54,7 +54,7 @@ LABEL_MAP = {
 }
 
 
-# ================== DATA LOADING ================== #
+# Data loading
 
 def load_data(path, text_col, label_col):
     """Load dataset from CSV."""
@@ -97,7 +97,7 @@ def prepare_data(texts, labels, test_size=0.2, seed=42):
     return X_train_tfidf, X_test_tfidf, y_train, y_test, vectorizer
 
 
-# ================== MODEL TRAINING ================== #
+# Model training
 
 def train_models(X_train_tfidf, y_train):
     """Train both models."""
@@ -120,7 +120,7 @@ def train_models(X_train_tfidf, y_train):
     return clf_logreg, clf_nb
 
 
-# ================== EVALUATION ================== #
+# Evaluation
 
 def evaluate_model(clf, X_test_tfidf, y_test, model_name):
     """Evaluate a model and return metrics."""

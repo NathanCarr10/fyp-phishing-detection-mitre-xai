@@ -80,22 +80,7 @@ def get_model_compatibility_warning(vectorizer, clf):
 
 
 def load_data(path, text_col, label_col):
-    """
-    Load email dataset from CSV file.
-
-    Args:
-        path (str): Path to the CSV file containing email data.
-        text_col (str): Name of the column containing email text.
-        label_col (str): Name of the column containing binary labels (0/1).
-
-    Returns:
-        tuple: (texts, labels) where texts is array of email strings,
-               labels is array of binary labels.
-
-    Raises:
-        ValueError: If specified columns not found in CSV file.
-        FileNotFoundError: If CSV file does not exist.
-    """
+    """Load the email dataset from a CSV file."""
     print("Loading dataset from:", path)
     df = pd.read_csv(path)
 
@@ -156,24 +141,14 @@ def vectorize_text(X_train, X_test):
 
 
 def train_model(clf, X_train_tfidf, y_train):
-    """
-    Train a classifier on TF-IDF transformed data.
-    
-    Args:
-        clf: Scikit-learn classifier object (pre-instantiated)
-        X_train_tfidf: Sparse matrix of TF-IDF features
-        y_train: Array of training labels
-    
-    Returns:
-        Trained classifier object
-    """
+    """Train a classifier on the TF-IDF features."""
     print(f"\nTraining {clf.__class__.__name__}...")
     clf.fit(X_train_tfidf, y_train)
     return clf
 
 
 def evaluate_model(clf, X_test_tfidf, y_test):
-    """Evaluate model on test data and print metrics."""
+    """Evaluate the model on the test split and print a few metrics."""
     print("\nEvaluating on test data...")
     y_pred = clf.predict(X_test_tfidf)
 
@@ -366,14 +341,7 @@ def plot_roc_auc(clf, X_test_tfidf, y_test, out_path="roc_curve.png"):
 # Model save/load + single email prediction
 
 def save_model(vectorizer, clf, model_path=MODEL_PATH):
-    """
-    Save the trained vectorizer and model to disk.
-    
-    Args:
-        vectorizer: Fitted TfidfVectorizer
-        clf: Trained classifier
-        model_path: Path to save the model (default: Logistic Regression path)
-    """
+    """Save the fitted vectorizer and model to disk."""
     os.makedirs(MODEL_DIR, exist_ok=True)
     joblib.dump(vectorizer, VECTORIZER_PATH)
     joblib.dump(clf, model_path)
@@ -382,15 +350,7 @@ def save_model(vectorizer, clf, model_path=MODEL_PATH):
 
 
 def load_model(model_path=MODEL_PATH):
-    """
-    Load the vectorizer and model from disk.
-    
-    Args:
-        model_path: Path to load the model from (default: Logistic Regression path)
-    
-    Returns:
-        tuple: (vectorizer, classifier)
-    """
+    """Load the saved vectorizer and model from disk."""
     if not (os.path.exists(VECTORIZER_PATH) and os.path.exists(model_path)):
         raise FileNotFoundError(
             f"Model files not found. Train the model and run save_model() first.\n"
@@ -405,27 +365,7 @@ def load_model(model_path=MODEL_PATH):
 
 
 def predict_single_email(text: str, model_path=MODEL_PATH):
-    """
-    Classify a single email as phishing or legitimate.
-
-    Args:
-        text (str): Email text to classify.
-        model_path (str): Path to the model file. 
-                         Default: Logistic Regression
-                         Alternative: NB_MODEL_PATH for Naive Bayes
-
-    Returns:
-        tuple: (pred_label, pred_name, prob_dict) where:
-               - pred_label: Integer label (0=legitimate, 1=phishing)
-               - pred_name: String label name
-               - prob_dict: Dict with probabilities {"legit": ..., "phishing": ...}
-
-    Raises:
-        FileNotFoundError: If model files not found. Run mvp_baseline.py first.
-
-    Note:
-        High-level convenience function for single email prediction.
-    """
+    """Predict a single email and return the label plus class probabilities."""
     vectorizer, clf = load_model(model_path=model_path)
     X = vectorizer.transform([text])
     proba = clf.predict_proba(X)[0]

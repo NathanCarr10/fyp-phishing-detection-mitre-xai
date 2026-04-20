@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support
 
@@ -32,16 +33,18 @@ SUMMARY_PATH = OUTPUT_DIR / "mitre_mapping_summary.csv"
 
 
 def extract_technique_id(label: str) -> str:
+    """Pull the technique code from the full label string."""
     return str(label).split(" - ")[0].strip()
 
 
 def parse_expected_all(expected_all: str) -> set[str]:
+    """Turn the semicolon-separated label list into a set."""
     parts = [p.strip() for p in str(expected_all).split(";") if p.strip()]
     return set(parts)
 
 
 def evaluate_multi_label_micro(rows: list[dict], labels: list[str]) -> tuple[float, float, float]:
-    """Compute micro precision/recall/F1 from set predictions."""
+    """Compute micro precision, recall, and F1 for the set labels."""
     tp = fp = fn = 0
 
     for row in rows:
@@ -75,10 +78,13 @@ def main() -> None:
         text = str(item["text"])
 
         predicted_primary_full = mitre_mapping(text, return_all=False)
-        predicted_primary = extract_technique_id(predicted_primary_full)
+        predicted_primary = extract_technique_id(str(predicted_primary_full))
 
         predicted_all_full = mitre_mapping(text, return_all=True)
-        predicted_all = [extract_technique_id(v) for v in predicted_all_full]
+        if isinstance(predicted_all_full, list):
+            predicted_all = [extract_technique_id(str(v)) for v in predicted_all_full]
+        else:
+            predicted_all = [extract_technique_id(str(predicted_all_full))]
 
         expected_primary = str(item["expected_primary"]).strip()
         expected_all_set = parse_expected_all(str(item["expected_all"]))
@@ -151,7 +157,12 @@ def main() -> None:
         {"scope": "overall_multilabel", "metric": "micro_f1", "value": float(micro_f1)},
     ]
 
-    for label, p, r, f, s in zip(labels, per_label_precision, per_label_recall, per_label_f1, per_label_support):
+    precision_arr = np.atleast_1d(per_label_precision)
+    recall_arr = np.atleast_1d(per_label_recall)
+    f1_arr = np.atleast_1d(per_label_f1)
+    support_arr = np.atleast_1d(per_label_support if per_label_support is not None else np.array([]))
+
+    for label, p, r, f, s in zip(labels, precision_arr, recall_arr, f1_arr, support_arr):
         summary_rows.append({"scope": f"primary_per_label:{label}", "metric": "precision", "value": float(p)})
         summary_rows.append({"scope": f"primary_per_label:{label}", "metric": "recall", "value": float(r)})
         summary_rows.append({"scope": f"primary_per_label:{label}", "metric": "f1", "value": float(f)})
