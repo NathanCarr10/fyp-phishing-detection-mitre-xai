@@ -4,15 +4,15 @@
 
 ## Overview
 
-This project builds an email phishing detection system that can not only classify emails as legitimate or phishing, but also explain *why* it made that choice. It maps detected threats to the MITRE ATT&CK framework and uses techniques like LIME and linear model weights to give explainable predictions.
+This project builds an email phishing detection system that can not only classify emails as legitimate or phishing, but also explain *why* it made that choice. It maps detected threats to the MITRE ATT&CK framework and uses techniques like LIME and SHAP to give explainable predictions.
 
 ### Key Features
 
 - 🔍 **Phishing Detection**: Classifies emails using Logistic Regression with TF-IDF
-- 🛡️ **MITRE ATT&CK Mapping**: Automatically maps detected phishing techniques to industry threat categories
-- 🤖 **Explainable Results**: Shows you exactly which words/phrases made the model decide it's phishing
-- ⚔️ **Adversarial Testing**: Simulates realistic attacker scenarios and tests model robustness
-- 📊 **Detailed Analysis**: Provides metrics, threshold tuning, and effectiveness analysis
+- 🛡️ **MITRE ATT&CK Mapping**: Automatically maps detected phishing techniques to five industry threat categories
+- 🤖 **Explainable Results**: Shows exactly which words pushed the model toward phishing or legitimate
+- ⚔️ **Adversarial Testing**: Simulates realistic attacker scenarios across four attack rules and three thresholds
+- 📊 **Detailed Analysis**: Cross-validation, threshold tuning, calibration, and error analysis
 - 🎨 **Interactive Dashboard**: Streamlit app for classifying emails and viewing explanations in real-time
 
 ## Quick Start
@@ -26,7 +26,7 @@ This project builds an email phishing detection system that can not only classif
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/NathanCarr10/fyp-phishing-detection-mitre-xai
    cd fyp-phishing-detection-mitre-xai
    ```
 
@@ -35,7 +35,7 @@ This project builds an email phishing detection system that can not only classif
    pip install -r requirements.txt
    ```
 
-   The package versions are locked to ensure everything works together properly.
+   Package versions are locked to ensure everything works together correctly.
 
 3. **Download and prepare datasets:**
    ```bash
@@ -57,14 +57,13 @@ Equivalent Python command:
 python src/reproduce_pipeline.py --seed 42
 ```
 
-This executes dataset build, training, simulation, analysis, and visualization in order,
-then writes run metadata to `simulation_results/reproducibility_run_metadata.json`.
+This executes dataset build, training, simulation, analysis, and visualisation in order, then writes run metadata to `simulation_results/reproducibility_run_metadata.json`.
 
 For full reproducibility details, see `REPRODUCIBILITY.md`.
 
 ### Running the Project
 
-Here's the basic workflow:
+Here is the basic workflow:
 
 #### 1. Train the Model
 
@@ -72,20 +71,19 @@ Here's the basic workflow:
 python src/mvp_baseline.py
 ```
 
-This loads all the email datasets, trains the model, and saves it to the `models/` folder. You'll see metrics like accuracy, precision, recall, and F1 score.
-It also generates a ROC curve to show how well the model performs.
+This loads all the email datasets, trains both models, and saves them to the `models/` folder. Metrics including accuracy, precision, recall, F1 score, and AUC are printed to the terminal along with ROC curves for both classifiers.
 
-#### 1b. Run More Rigorous Testing (Cross-Validation, Confidence Intervals, Calibration)
+#### 1b. Run Rigorous Testing (Cross-Validation, Confidence Intervals, Calibration)
 
 ```bash
 python src/evaluate_models_rigorously.py
 ```
 
 This tests the model more thoroughly by:
-- Running the model on different splits of the data to check consistency
-- Computing confidence intervals so we know how reliable the metrics are
-- Testing different decision thresholds to find the best one for our use case
-- Checking if the model's confidence scores match the actual results
+- Running repeated stratified cross-validation (5 folds, 3 repeats, 15 runs per model)
+- Computing 95% confidence intervals across fold scores
+- Testing decision thresholds from 0.10 to 0.95 to find the optimal operating point
+- Checking calibration using Brier score and Expected Calibration Error (ECE)
 
 #### 1c. Check MITRE Mapping Quality
 
@@ -93,9 +91,9 @@ This tests the model more thoroughly by:
 python src/evaluate_mitre_mapping.py
 ```
 
-If we had time to label some emails with MITRE techniques, this checks how well our automatic mapping works.
+Formally evaluates the MITRE mapping against a manually labelled validation subset, computing primary-label accuracy, macro F1, exact match rate, and micro precision, recall, and F1.
 
-#### 1d. Analyze Model Errors
+#### 1d. Analyse Model Errors
 
 ```bash
 python src/run_error_analysis.py
@@ -104,8 +102,8 @@ python src/run_error_analysis.py
 Generates reports on:
 - False positives (legitimate emails marked as phishing)
 - False negatives (phishing emails marked as legitimate)
-- The hardest cases (most confident mistakes)
-- Which words appear most in errors
+- The fifty most confidently wrong predictions in each direction
+- The most common vocabulary appearing in each error type
 
 #### 2. Run Adversarial Attacks
 
@@ -114,12 +112,12 @@ python src/attacker_sim.py
 ```
 
 Simulates realistic attacks to test model robustness:
-- Creates variations of phishing emails
-- Tests multi-rule attack combinations
-- Records which attacks got through, which got caught
-- Logs explanation details
+- Applies four attack rules individually and in pairs (16 combinations per base email)
+- Tests across three classification thresholds (0.5, 0.6, 0.7)
+- Records which attacks were caught and which bypassed detection
+- Logs LIME explanations for every bypass case
 
-#### 3. Analyze Simulation Results
+#### 3. Analyse Simulation Results
 
 ```bash
 python src/analyse_simulation_results.py
@@ -128,20 +126,20 @@ python src/analyse_simulation_results.py
 This will:
 - Compute confusion matrix metrics
 - Generate summary tables grouped by threshold, attack type, rule chain, and MITRE technique
-- Output CSVs to `simulation_results/analysis/`
+- Output seven summary CSVs to `simulation_results/analysis/`
 
-#### 4. Visualize Results
+#### 4. Visualise Results
 
 ```bash
 python src/visualise_results.py
 ```
 
 This will:
-- Generate publication-ready charts
+- Generate charts from the simulation analysis CSVs
 - Create threshold analysis plots
-- Plot detection rates by attack type
+- Plot detection rates by attack type and rule chain
 - Generate MITRE technique effectiveness charts
-- Output: `simulation_results/figures/`
+- Output to `simulation_results/figures/`
 
 #### 5. Run the Dashboard
 
@@ -149,65 +147,77 @@ This will:
 python -m streamlit run src/app.py
 ```
 
-Or if you're on Windows and Python isn't in PATH:
+Or on Windows:
 
 ```powershell
 .\run_app.cmd
 ```
 
-This starts a web interface you can use to:
-- Paste in email text to classify it
-- Adjust how strict you want the detector to be
-- See the confidence scores
-- Check what MITRE techniques are involved
-- View explanations of why it classified the email that way
-- Browse the simulation analysis and charts
+This starts a web interface where you can:
+- Paste in email text or upload a .eml file to classify it
+- Adjust the classification threshold (0.10 to 0.95)
+- Switch between Logistic Regression and Naive Bayes
+- Toggle LIME and SHAP explanation methods
+- View confidence scores and MITRE technique mapping
+- See which words drove the classification decision
 
 ## Project Structure
 
 ```
 fyp-phishing-detection-mitre-xai/
 ├── src/
-│   ├── mvp_baseline.py              # Model training and evaluation
-│   ├── xai_explainer.py             # XAI explanation module (LIME + weights)
-│   ├── attacker_sim.py              # Adversarial simulation engine
-│   ├── analyse_simulation_results.py # Analysis pipeline
-│   ├── visualise_results.py          # Visualization generation
-│   ├── build_dataset.py              # Dataset preprocessing
-│   ├── run_error_analysis.py          # Stage 4 error-analysis artifact generator
-│   ├── app.py                        # Streamlit dashboard
-│   └── utils.py                      # Shared utility functions
+│   ├── build_dataset.py                  # Dataset construction and balancing
+│   ├── mvp_baseline.py                   # Model training and evaluation
+│   ├── models.py                         # Reusable model factory and helpers
+│   ├── xai_explainer.py                  # SHAP, LIME, and linear weight explanations
+│   ├── attacker_sim.py                   # Adversarial simulation and MITRE mapping
+│   ├── analyse_simulation_results.py     # Simulation log processing
+│   ├── visualise_results.py              # Chart generation
+│   ├── compare_models.py                 # Side-by-side model comparison
+│   ├── evaluate_models_rigorously.py     # Cross-validation, threshold sensitivity, calibration
+│   ├── evaluate_mitre_mapping.py         # Formal MITRE mapping evaluation
+│   ├── run_error_analysis.py             # False positive and negative analysis
+│   ├── reproduce_pipeline.py             # Pipeline runner with seed control
+│   ├── email_ingestion.py                # .eml file parsing
+│   ├── utils.py                          # Shared constants and helper functions
+│   └── app.py                            # Streamlit dashboard
 │
 ├── data/
-│   ├── raw/                          # Original datasets (not in repo)
+│   ├── raw/                              # Original datasets (not committed)
 │   ├── processed/
-│   │   └── english_dataset.csv       # Processed training dataset
-│   └── README.md                     # Dataset documentation
+│   │   └── english_dataset.csv           # Processed training dataset
+│   └── README.md                         # Dataset documentation
 │
 ├── models/
-│   ├── tfidf_vectorizer.joblib       # Trained TF-IDF vectorizer
-│   └── logreg_model.joblib           # Trained Logistic Regression model
+│   ├── tfidf_vectorizer.joblib           # Trained TF-IDF vectoriser
+│   ├── logreg_model.joblib               # Trained Logistic Regression model
+│   └── multinomial_nb_model.joblib       # Trained Naive Bayes model
 │
 ├── simulation_results/
-│   ├── attacker_simulation_log.csv   # Raw simulation logs
-│   ├── analysis/                     # Summary statistics CSVs
-│   └── figures/                      # Generated visualizations
+│   ├── attacker_simulation_log.csv       # Raw simulation logs
+│   ├── analysis/                         # Summary statistics CSVs
+│   └── figures/                          # Generated visualisations
 │
-├── evaluation_results/               # Rigorous eval + MITRE eval + error-analysis outputs
+├── evaluation_results/                   # Cross-validation, MITRE eval, and error analysis outputs
 │
 ├── tests/
-│   ├── test_mvp_baseline.py
-│   ├── test_xai_explainer.py
-│   ├── test_attacker_sim.py
-│   └── conftest.py
+│   ├── conftest.py                       # Shared fixtures and custom pytest markers
+│   ├── test_utils.py                     # Tests for utility functions
+│   ├── test_xai_explainer.py             # Tests for explanation methods
+│   ├── test_email_ingestion.py           # Tests for .eml parsing
+│   └── test_stage_scripts_helpers.py     # Tests for evaluation and analysis helpers
 │
-├── ARCHITECTURE.md                   # System design documentation
-├── REPRODUCIBILITY.md                # Reproducibility protocol and run metadata guidance
-├── PROJECT_REPORT.md                 # Research report
-├── requirements.txt                  # Python dependencies
-├── README.md                         # This file
-├── run_reproducible_pipeline.cmd     # One-command reproducible pipeline launcher
-├── run_reproducible_pipeline.ps1     # PowerShell launcher for reproducible pipeline
+├── .github/
+│   └── workflows/
+│       └── ci.yml                        # GitHub Actions CI workflow
+│
+├── ARCHITECTURE.md                       # System design documentation
+├── REPRODUCIBILITY.md                    # Reproducibility protocol and metadata guidance
+├── DEVELOPMENT.md                        # Development notes
+├── PROJECT_REPORT.md                     # Research report
+├── requirements.txt                      # Python dependencies
+├── README.md                             # This file
+├── run_reproducible_pipeline.cmd         # One-command reproducible pipeline launcher
 └── .gitignore
 ```
 
@@ -215,101 +225,111 @@ fyp-phishing-detection-mitre-xai/
 
 ### Model Architecture
 
-**Classifier**: Logistic Regression with balanced class weights
-- **Feature Extraction**: TF-IDF Vectorization
-  - 5000 maximum features
-  - Lowercase text normalization
-  - English stopwords removal
-- **Training Data**: Combined dataset from multiple sources
-  - Legitimate emails: Enron corpus
-  - Phishing emails: Kaggle phishing datasets, Nazario collection, Nigerian fraud emails
+**Primary Classifier**: Logistic Regression with `class_weight="balanced"`
+**Comparison Classifier**: Multinomial Naive Bayes
+
+**Feature Extraction**: TF-IDF Vectorisation
+- 5,000 maximum features
+- Lowercase text normalisation
+- English stopword removal
+- Fitted on training set only to prevent data leakage
+
+**Training Data**: 21,402 emails balanced equally across both classes
+- Legitimate emails: Enron corpus
+- Phishing emails: SpamAssassin, Nazario collection, Nigerian Fraud emails
 
 ### Explainability
 
-The system supports two explanation methods:
+The system supports three explanation methods applied in priority order:
 
-1. **LIME (Local Interpretable Model-agnostic Explanations)**
-   - Generates local linear approximations of model decisions
-   - Returns top features (words) contributing to phishing score
-   - Provides intuitive explanation with feature weights
+1. **SHAP** (`shap.LinearExplainer`)
+   - Global feature importance across the full dataset
+   - Built from a 200-email background sample and cached after first call
+   - Reveals which vocabulary the model relies on most overall
 
-2. **Linear Weights (Fallback)**
-   - Uses TF-IDF weight × model coefficient for each feature
-   - Simpler, faster explanation without additional computation
-   - Automatically used if LIME unavailable
+2. **LIME** (Local Interpretable Model-agnostic Explanations)
+   - Per-email local explanations
+   - Generates perturbations of the input and fits a local interpretable model
+   - Returns top contributing words with weights
+
+3. **Linear Weight Analysis** (fallback)
+   - Computes feature importance directly from TF-IDF value × Logistic Regression coefficient
+   - Runs in under 1ms with no additional libraries required
+   - Used automatically when LIME and SHAP are unavailable
+
+All three methods return results in the same structured format.
 
 ### MITRE ATT&CK Mapping
 
-Simple pattern-based mapping to detect common phishing techniques:
-- **T1566.002 (Phishing: Link)**: Detects URLs in email content
-- **T1566.001 (Phishing: Attachment/Generic)**: Default category
+Pattern and keyword scoring system covering five techniques:
 
-MITRE mapping quality can be measured using the manually labeled validation subset at
-`data/processed/mitre_validation_subset.csv` via `src/evaluate_mitre_mapping.py`.
+| Technique | Description |
+|-----------|-------------|
+| T1566.002 | Phishing: Link |
+| T1566.001 | Phishing: Attachment |
+| T1598.003 | Spearphishing: Social Platform Lookalike |
+| T1598.001 | Spearphishing: Attachment |
+| T1598.002 | Spearphishing: Shortened URL |
 
-The mapper now also supports optional confidence metadata via:
-`mitre_mapping(email_text, return_details=True)`.
-
-*Note: Mapping can be extended to cover more MITRE techniques. See ARCHITECTURE.md.*
+URL pattern matches score 1 point each and phishing keyword matches score 2 points each. The email is assigned to the highest-scoring technique, with T1566.001 used as a fallback when nothing matches. Mapping accuracy was formally evaluated against a manually labelled validation subset — see `src/evaluate_mitre_mapping.py`.
 
 ### Adversarial Simulation
 
-Simulates attacker vs. defender scenarios:
+Simulates attacker vs. defender scenarios across four attack rules:
 
-**Attack Rules:**
-- `urgency`: Adds time pressure language
-- `spoof_bank`: Spoofed bank security notice
-- `spoof_revenue`: Spoofed tax authority
-- `fake_link`: Injects malicious link
+| Rule | Description |
+|------|-------------|
+| `urgency` | Adds time pressure language |
+| `spoof_bank` | Spoofed bank security notice |
+| `spoof_revenue` | Spoofed tax authority message |
+| `fake_link` | Injects a malicious URL |
 
-**Attack Variants:**
-- Single-rule attacks (4 variants per base email)
-- Multi-rule chained attacks (4 × 3 = 12 two-rule combinations)
-
-**Metrics Computed:**
-- TP, FP, TN, FN (confusion matrix)
-- Detection Rate (TPR)
-- Bypass Rate (FNR)
-- Precision, Recall, F1 Score
-- Accuracy
+Rules are applied individually (4 single-rule attacks) and in pairs (12 two-rule combinations) per base email, across three classification thresholds (0.5, 0.6, 0.7). LIME explanations are automatically logged for every bypass case.
 
 ## Performance Results
 
-### Model Evaluation (on test set)
+### Model Evaluation (held-out test set, 4,281 emails)
+
+| Metric | Logistic Regression | Naive Bayes |
+|--------|-------------------|-------------|
+| Accuracy | 93.76% | 90.89% |
+| Precision | 0.94 | 0.91 |
+| Recall | 0.94 | 0.91 |
+| F1 Score | 0.94 | 0.91 |
+| AUC-ROC | 0.9808 | 0.9642 |
+
+### Cross-Validation (5 folds × 3 repeats = 15 runs)
+
+| Metric | LR Mean | LR 95% CI |
+|--------|---------|-----------|
+| Accuracy | 0.938 | [0.933, 0.941] |
+| AUC | 0.980 | [0.978, 0.982] |
+
+### Attacker Simulation
+
+| Threshold | Detection Rate | Bypass Rate |
+|-----------|---------------|-------------|
+| 0.5 | 96.9% | 3.1% |
+| 0.6 | 84.4% | 15.6% |
+| 0.7 | 57.8% | 42.2% |
+
+### MITRE Mapping Evaluation
 
 | Metric | Score |
 |--------|-------|
-| Accuracy | ~95% |
-| Precision | ~94% |
-| Recall | ~96% |
-| F1 Score | ~95% |
-| AUC | ~0.98 |
-
-*Exact figures depend on dataset and train/test split. See simulation_results/ for detailed analysis.*
-
-### Simulation Analysis
-
-The adversarial simulation tests model robustness against:
-- Single rule attacks (4 rule types)
-- Multi-rule attacks (12 combinations)
-- Simulation thresholds (0.5, 0.6, 0.7)
-- Performance summarized by:
-  - Attack type
-  - Rule chain
-  - MITRE technique
-  - Classification threshold
-
-Separate from attacker simulation, `src/evaluate_models_rigorously.py` runs threshold sensitivity from `0.10` to `0.95` in steps of `0.05`.
+| Primary-label Accuracy | 93.3% |
+| Macro F1 | 0.931 |
+| Multi-label Micro Recall | 0.941 |
 
 ## Dependencies
 
 | Library | Purpose |
 |---------|---------|
 | pandas | Data processing |
-| scikit-learn | ML model training & TF-IDF |
+| scikit-learn | ML model training and TF-IDF |
 | lime | Local explanations |
-| shap | Optional global explanations (exploratory baseline script) |
-| matplotlib | Visualization |
+| shap | Global feature importance |
+| matplotlib | Visualisation |
 | streamlit | Interactive dashboard |
 | joblib | Model persistence |
 
@@ -317,14 +337,14 @@ See `requirements.txt` for specific versions.
 
 ## Continuous Integration
 
-This repository includes a CI workflow that runs the full test suite on push and pull requests:
+A GitHub Actions workflow runs the test suite automatically on every push:
 
 - `.github/workflows/ci.yml`
 
 Local equivalent:
 
 ```bash
-python -m pytest -q
+python -m pytest tests/ -v
 ```
 
 ## Usage Examples
@@ -332,13 +352,12 @@ python -m pytest -q
 ### Classify a Single Email
 
 ```python
-from src.mvp_baseline import load_model
+from src.utils import load_model
 from src.xai_explainer import explain_email
 
 vectorizer, clf = load_model()
-email_text = "URGENT: Your account has been compromised. Click here..."
+email_text = "URGENT: Your account has been compromised. Click here to verify."
 
-# Get explanation
 explanation = explain_email(
     email_text,
     num_features=10,
@@ -346,7 +365,7 @@ explanation = explain_email(
     use_lime=True
 )
 
-print(f"Prediction: {explanation['pred_label']}")
+print(f"Prediction: {'Phishing' if explanation['is_phishing'] else 'Legitimate'}")
 print(f"Phishing Probability: {explanation['phishing_probability']:.3f}")
 for feature in explanation['top_features']:
     print(f"  {feature['term']}: {feature['weight']:+.4f}")
@@ -357,91 +376,52 @@ for feature in explanation['top_features']:
 ```python
 from src.attacker_sim import mitre_mapping
 
-email = "Click here to verify your account: http://example.com"
+email = "Click here to verify your account: http://secure-verification-example.com/login"
 technique = mitre_mapping(email)
 print(f"MITRE Technique: {technique}")
 # Output: T1566.002 - Phishing: Link
 ```
 
-### Generate Simulation Report
+## Limitations
 
-See `src/analyse_simulation_results.py` for detailed analysis pipeline.
+- The model is trained on datasets from 1999 to 2002. The SHAP analysis confirms this directly — several top-ranked global features are Enron-specific terms rather than genuine phishing vocabulary. Results should be treated as a proof of concept rather than a production-ready system.
+- The attacker simulation uses four predefined rules. A real attacker can adapt in ways that fixed rules cannot replicate. Bypass rates should be considered a floor rather than a ceiling.
+- LIME explanations can vary between runs due to random perturbations. They should be treated as a guide rather than a definitive account of the model's reasoning.
 
-## References & Data Sources
+## Future Work
 
-### Datasets
+- Compare BERT and DistilBERT on the same evaluation pipeline
+- Implement gradient-based adversarial attacks
+- Add URL analysis and sender metadata features (SPF, DKIM)
+- Retrain on a modern dataset including LLM-generated phishing emails
+- Deploy as a REST API for real-time email filtering
 
-- **Enron Email Corpus**: Public email archive from bankrupt company
-- **Kaggle Phishing Dataset**: https://www.kaggle.com/datasets/...
-- **Nazario Phishing Corpus**: Phishing email collection
-- **Nigerian Fraud Emails**: Common fraud email patterns
-
-### Libraries & Frameworks
+## References
 
 - **LIME** (Ribeiro et al., 2016): "Why Should I Trust You?"
-- **SHAP** (Lundberg & Lee, 2017): Unified approach to interpreting model predictions
-- **scikit-learn**: Machine learning toolkit
+- **SHAP** (Lundberg & Lee, 2017): A unified approach to interpreting model predictions
+- **scikit-learn**: Machine learning in Python
 - **MITRE ATT&CK**: Adversary tactics, techniques, and procedures framework
-
-## Limitations & Future Work
-
-### Current Limitations
-
-- MITRE mapping is pattern-based (limited to 2 techniques)
-- Simulation uses simple rule-based attacks (not adversarial ML)
-- Model trained on public datasets (may not generalize to enterprise emails)
-- No temporal dynamics or email thread context
-
-### Future Enhancements
-
-- [ ] Extend MITRE mapping to cover more techniques (T1598, T1594, etc.)
-- [ ] Implement gradient-based adversarial attacks
-- [ ] Add ensemble methods (Random Forest, Gradient Boosting)
-- [ ] Integrate with email systems for real-time detection
-- [ ] Add deep learning models (BERT, RoBERTa)
-- [ ] Implement multi-label classification for multiple attack vectors
-- [ ] Add email metadata features (sender reputation, header analysis)
-- [ ] Cross-validation and hyperparameter optimization studies
-
-## Development
-
-### Running Tests
-
-```bash
-python -m pytest tests/ -v
-```
-
-### Code Style
-
-This project follows PEP 8 guidelines. All functions include docstrings in Google style.
-
-### Contributing
-
-For internal development:
-1. Create a feature branch
-2. Make changes with clear commit messages
-3. Add tests for new functionality
-4. Ensure all tests pass
 
 ## License
 
-This project is submitted as coursework for ATU Galway. Please contact the author for usage/distribution permissions.
+This project is submitted as coursework for ATU Galway. Please contact the author for usage or distribution permissions.
 
-## Contact & Author
+## Contact
 
-**Author**: Nathan (Student ID: G00410214)  
-**Degree**: BSc Computing in Software Development  
-**Institution**: Atlantic Technological University, Galway  
+**Author**: Nathan Carr (G00410214)
+**Degree**: BSc Computing in Software Development
+**Institution**: Atlantic Technological University, Galway
 **Submission Date**: April 2026
 
-## Acknowledgments
+## Acknowledgements
 
 - ATU Galway for project supervision
-- Kaggle for public datasets
-- Open-source ML/XAI communities
+- Enron, SpamAssassin, Nazario, and Nigerian Fraud dataset contributors
+- The open-source LIME, SHAP, and scikit-learn communities
 - MITRE ATT&CK framework creators
 
 ---
 
-**Last Updated**: April 2026  
-**Status**: In progress
+**Last Updated**: April 2026
+**Status**: Complete
