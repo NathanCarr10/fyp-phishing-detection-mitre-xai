@@ -1,0 +1,46 @@
+{
+  "started_at_utc": "2026-04-26T17:28:18.500728+00:00",
+  "finished_at_utc": "2026-04-26T17:30:38.288223+00:00",
+  "python": {
+    "executable": "C:\\Users\\natha\\anaconda3\\python.exe",
+    "version": "3.12.7"
+  },
+  "platform": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64"
+  },
+  "reproducibility": {
+    "seed": 42,
+    "pythonhashseed": "42",
+    "env_variable": "FYP_RANDOM_SEED",
+    "note": "Some scripts currently hardcode seed=42 internally; keep --seed=42 for identical reruns."
+  },
+  "pipeline_stages": [
+    {
+      "name": "build_dataset",
+      "script": "src/build_dataset.py",
+      "duration_seconds": 7.846
+    },
+    {
+      "name": "train_models",
+      "script": "src/mvp_baseline.py",
+      "duration_seconds": 19.521
+    },
+    {
+      "name": "run_simulation",
+      "script": "src/attacker_sim.py",
+      "duration_seconds": 92.454
+    },
+    {
+      "name": "analyse_results",
+      "script": "src/analyse_simulation_results.py",
+      "duration_seconds": 1.683
+    },
+    {
+      "name": "visualise_results",
+      "script": "src/visualise_results.py",
+      "duration_seconds": 18.277
+    }
+  ]
+}
