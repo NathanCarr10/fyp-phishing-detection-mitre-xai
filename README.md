@@ -6,6 +6,9 @@
 
 This project builds an email phishing detection system that can not only classify emails as legitimate or phishing, but also explain *why* it made that choice. It maps detected threats to the MITRE ATT&CK framework and uses techniques like LIME and SHAP to give explainable predictions.
 
+Screencast (5 min): [View or download the project video](https://raw.githubusercontent.com/NathanCarr10/fyp-phishing-detection-mitre-xai/main/Dissertation%20%2B%20Screencast/Final%20Year%20Project%20Screencast%20(5%20min).mp4)
+Full Screencast (YouTube): [Watch the extended video](https://www.youtube.com/watch?v=CVL3C_xHcic)
+
 ### Key Features
 
 - 🔍 **Phishing Detection**: Classifies emails using Logistic Regression with TF-IDF
